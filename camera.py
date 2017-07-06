@@ -131,11 +131,9 @@ class ThorlabsDCx(Camera):
         _chk(self.clib.is_ExitCamera(self.filehandle))
 
     def start(self):
-        print("Starting")
         _chk(self.clib.is_CaptureVideo(self.filehandle, c_int(100)))
 
     def stop(self):
-        print("Stopping")
         _chk(self.clib.is_StopLiveVideo(self.filehandle, c_int(1)))
 
     def set_acquisition_mode(self, mode):
@@ -224,44 +222,49 @@ class CameraSensor(Sensor):
     The camera that looks at the laser
     """
 
-    laser = None
-    capture_time = 1
-    frame_delay = 0.01
+    _laser = None
+    _capture_time = 1
+    _frame_delay = 0.01
 
-    camera = None
+    _camera = None
+    _start_time = 0
 
     def __init__(self, laser, capture_time, frame_delay):
-        self.laser = laser
-        self.capture_time = capture_time
-        self.frame_delay = frame_delay
+        self._laser = laser
+        self._capture_time = capture_time
+        self._frame_delay = frame_delay
 
-        self.camera = ThorlabsDCx()
+        self._camera = ThorlabsDCx()
+
+        self._measuring = False
 
     def __del__(self):
-        self.camera.close()
+        self._camera.close()
 
-    def measure(self):
 
-        self.laser.set_enabled(True)
-        self.laser.set_enabled(True)
-        self.camera.start()
+    def begin_measuring(self):
+        self._laser.set_enabled(True)
+        self._laser.set_enabled(True)
+        self._camera.start()
+        self._start_time = time.time()
+        super().begin_measuring()
+        print("Beginning Measurement")
 
-        start_time = time.time()
+    def update(self):
+        if self._measuring:
+            if time.time() - self._start_time < self._capture_time:
+                print('.', end='', flush=True)
+                img = self._camera.acquire_image_data()
+                #cv2.imshow('source', img)
+                ret, img = cv2.threshold(img, 12, 255, cv2.THRESH_BINARY)
+                ret, contours, hier = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                cv2.drawContours(img, contours, -1, (255, 0, 0))
+                #cv2.imshow('threshhold', img)
 
-        while time.time() - start_time < self.capture_time:
 
-            img = self.camera.acquire_image_data()
-            cv2.imshow('source', img)
-            ret, img = cv2.threshold(img, 12, 255, cv2.THRESH_BINARY)
-            ret, contours, hier = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            cv2.drawContours(img, contours, -1, (255, 0, 0))
-            cv2.imshow('threshhold', img)
-
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-
-            time.sleep(self.frame_delay)
-
-        self.camera.stop()
-        self.laser.set_enabled(False)
-        self.laser.set_enabled(False)
+            else:
+                print("\nStopping Measuring")
+                self._camera.stop()
+                self._laser.set_enabled(False)
+                self._laser.set_enabled(False)
+                self._measuring = False

@@ -6,144 +6,49 @@ class LinearAxis(ControlAxis):
     A ControlAxis to control the mm to the laser
     """
 
-    linear = None
+    _linear_stage = None
 
-    steps = 0
-    step_mm = 0
-    start_mm = 0
+    def __init__(self, min_value, max_value, steps, linear_stage):
+        super().__init__(min_value, max_value, steps)
+        self._linear_stage = linear_stage
 
-    current_step = 0
-    current_mm = 0
+    def _write_value(self, value):
+        self._linear_stage.move_to(value)
+        print("Setting linear position to: {}".format(value))
 
-    def __init__(self, linear, steps, step_mm, start_mm):
+    def is_done(self):
         """
-        Create a LaserPowerAxis
-        :param linear: The stage to control
-        :param steps: The number of steps to step through
-        :param step_mm: The mm per step
-        :param start_mm: The mm to start the first step at
+        Returns if the stage is done moving
         """
-
-        self.linear = linear
-
-        self.steps = steps
-        self.step_mm = step_mm
-        self.start_mm = start_mm
-
-        self.current_step = 0
-        self.current_mm = self.start_mm
-
-        linear.move_home(True)
-
-    def get_current_step(self):
-        return self.current_step
-
-    def get_current_value(self):
-        return self.current_mm
-
-    def goto_step(self, step):
-        pass
-
-    def goto_value(self, value):
-        pass
-
-    def first_step(self):
-        """
-        Move to the first step
-        :return: nothing
-        """
-        self.current_step = 0
-        self.current_mm = self.start_mm
-        self.next_step()
-
-    def next_step(self):
-        """
-        Move to the next step, and rolls back to the first if it hits the end
-        :return: Whether the next step will go back to the beginning
-        """
-        print("Linear move step {0}".format(self.current_step))
-        self.linear.move_to(self.current_mm, blocking=True)
-
-        self.current_step += 1
-        self.current_mm += self.step_mm
-
-        if self.current_step >= self.steps:
-            self.current_step = 0
-            self.current_mm = self.start_mm
-
-        return self.current_step == 1
-
+        return not self._linear_stage.is_in_motion
 
 class RotateAxis(ControlAxis):
     """
     Axis to control a rotational axis pointed at a surface
     """
 
-    rotate = None
+    _rotation_stage = None
 
-    steps = 0
-    step_mm = 0
-    start_mm = 0
+    _distance_to_surface = 576.2625
+    _ticks_to_level = 8.1
+    _ticks_per_revolution = 66
 
-    current_step = 0
-    current_mm = 0
-    current_angle = 0
+    def __init__(self, min_value, max_value, steps, rotation_stage):
+        super().__init__(min_value, max_value, steps)
+        self._rotation_stage = rotation_stage
 
-    mm_to_surface = 1
-    ticks_to_level = 8.01
-    ticks_per_revolution = 66
+    def _write_value(self, value):
+        self._rotation_stage.move_to(self._distance_to_angle(value))
+        print("Setting rotation position to: {}".format(value))
 
-    def __init__(self, rotate, steps, step_mm, start_mm, mm_to_surface):
+    def _distance_to_angle(self, distance):
+        return self._ticks_to_level \
+            + math.atan(distance / self._distance_to_surface) \
+            * self._ticks_per_revolution \
+            / (2 * math.pi)
+
+    def is_done(self):
         """
-        Create a LaserPowerAxis
-        :param rotate: The stage to control
-        :param steps: The number of steps to step through
-        :param step_mm: The mm per step
-        :param start_mm: The mm to start the first step at
+        Returns if the stage is done moving
         """
-
-        self.rotate = rotate
-
-        self.steps = steps
-        self.step_mm = step_mm
-        self.start_mm = start_mm
-
-        self.current_step = 0
-        self.current_mm = self.start_mm
-
-        self.mm_to_surface = mm_to_surface
-
-        rotate.move_home(True)
-        rotate.move_to(self.ticks_to_level, True)
-
-    def first_step(self):
-        """
-        Move to the first step
-        :return: nothing
-        """
-        self.current_step = 0
-        self.current_mm = self.start_mm
-        self.current_angle = self.mm_angle(self.current_mm)
-        self.next_step()
-
-    def next_step(self):
-        """
-        Move to the next step, and rolls back to the first if it hits the end
-        :return: Whether the next step will go back to the beginning
-        """
-        print("Rotate move step {0}".format(self.current_step))
-        self.rotate.move_to(self.current_angle + self.ticks_to_level, blocking=True)
-
-        self.current_step += 1
-        self.current_mm += self.step_mm
-        self.current_angle = self.mm_angle(self.current_mm)
-
-        if self.current_step >= self.steps:
-            self.current_step = 0
-            self.current_mm = self.start_mm
-            self.current_angle = self.mm_angle(self.current_mm)
-
-        return self.current_step == 1
-
-    def mm_angle(self, mm):
-        return math.atan(mm / self.mm_to_surface) * self.ticks_per_revolution / (2 * math.pi)
+        return not self._rotation_stage.is_in_motion

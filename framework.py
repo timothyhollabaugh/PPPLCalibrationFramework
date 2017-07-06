@@ -1,5 +1,12 @@
+"""
+The framework for stepping and scanning axis and measuring the sensor values
+"""
+
 from abc import ABC, abstractmethod
+from enum import Enum, auto
 import time
+
+import cv2
 
 class ControlAxis(ABC):
 
@@ -8,58 +15,131 @@ class ControlAxis(ABC):
     Must be subclassed for each actual axis being used
     """
 
-    def __init__(self, steps, steps)
+    _step = -1
+    _value = 0
+    _min_value = 0
+    _max_value = 0
+    _steps = 0
+
+    def __init__(self, min_value, max_value, steps):
+        self._step = -1
+        self._value = min_value
+        self._min_value = min_value
+        self._max_value = max_value
+        self._steps = steps
 
     @abstractmethod
-    def get_name(self):
+    def _write_value(self, value):
         """
-        Get the human readable name of this axis
+        Write the value to the physical device
+        Returns whether the write was successful
         """
         pass
 
-    @abstractmethod
-    def get_current_step(self):
+    def update(self):
         """
-        Get the current step
-        """
-        pass
-
-    @abstractmethod
-    def get_current_value(self):
-        """
-        Get the current value
+        Gets called very quickly repeatedly while scanning
         """
         pass
 
-    @abstractmethod
+    def get_value_per_step(self):
+        """
+        Returns the value that gets moved per step
+        """
+        return (self._max_value - self._min_value) / self._steps
+
+    def get_step(self):
+        """
+        Gets the current step that this axis is at
+        """
+        return self._step
+
     def goto_step(self, step):
         """
-        Go to a step
+        Goes to a specified step
+        Returns whether the move was successful
         """
-        pass
+        if step >= 0 and step < self._steps:
+            self._step = step
+            return self.goto_value(self._min_value + step * self.get_value_per_step())
+        else:
+            print("goto_step {} failed! {}".format(step, type(self).__name__))
+            return False
 
-    @abstractmethod
+    def is_done(self):
+        """
+        Returns whether the axis is done moving
+        """
+        return True
+
+    def get_value(self):
+        """
+        Gets the current value that this axis is at
+        """
+        return self._value
+
     def goto_value(self, value):
         """
-        Go to a value
+        Gots to a specified value, regardless of what the step is
+        Returns if successful
         """
-        pass
+        if value <= self._max_value and value >= self._min_value:
+            self._value = value
+            return self._write_value(self._value)
+        else:
+            print("goto_value {} failed! {}".format(value, type(self).__name__))
+            return False
 
-    @abstractmethod
-    def next_step(self):
-        """
-        Moves to the next step
-        After the last step, it should roll over to the first step
-        :return: True if this is not the last step, False if it is the last step
-        """
-        pass
 
-    @abstractmethod
-    def first_step(self):
+    def get_min_value(self):
         """
-        Goes to the first step and resets to that state
-        :return: nothing
+        Gets the current min value
         """
+        return self._min_value
+
+    def set_min_value(self, min_value, move_to=False):
+        """
+        Gets the new minimum value and optionally moves to
+        it and sets the step to 0 if the current value is now too low
+        """
+        self._min_value = min_value
+        if move_to:
+            self.goto_value(min_value)
+            self._step = 0
+
+    def get_max_value(self):
+        """
+        Gets the current max value
+        """
+        return self._max_value
+
+    def set_max_value(self, max_value, move_to=False):
+        """
+        Gets the new maximum value and optionally moves to
+        it and sets the step to 0 if the current value is now too low
+        """
+        self._max_value = max_value
+        if move_to:
+            self.goto_value(max_value)
+            self._step = 0
+    
+    def get_steps(self):
+        """
+        Get the number of steps
+        """
+        return self._steps
+
+    def set_steps(self, steps):
+        """
+        Set the number of steps
+        """
+        self._steps = steps
+    
+    def reset(self):
+        """
+        Resets axis to not scanning
+        """
+        self._step = -1
 
 class Sensor(ABC):
 
@@ -67,58 +147,61 @@ class Sensor(ABC):
     The thing that is being calibrated
     """
 
-    @abstractmethod
-    def measure(self):
-        pass
+    _measuring = False
 
+    def update(self):
+        """
+        Gets called repeatedly while scanning
+        """
+        self._measuring = False
+
+    def begin_measuring(self):
+        """
+        Begin measuring during update()
+        """
+        self._measuring = True
+
+    def is_done(self):
+        """
+        Returns whether the sensor is done measuring
+        """
+        return not self._measuring
+
+class AxisControllerState(Enum):
+    """
+    The state for the AxisController
+    """
+    START = auto()
+    START_WAIT = auto()
+    BEGIN_STEP = auto()
+    WAIT_STEP = auto()
+    NEXT_AXIS = auto()
+    BEGIN_MEASURING = auto()
+    WAIT_MEASURING = auto()
+    DONE = auto()
 
 class AxisController:
     """
     Controls many ControlAxis to scan a grid
     """
 
-    control_axis = []
+    _control_axis = []
+    _sensor = None
 
-    sensor = None
+    _current_axis_index = 0
+    _state = AxisControllerState.START
 
-    def __init__(self, control_axis, sensor):
+    _step_delay = 0
+
+    def __init__(self, control_axis, sensor, step_delay):
         """
         Creates a new Axis Controller with a list of ControlAxis to control
         :param control_axis: a list of ControlAxis in the order that they should be controlled
         """
     
-        self.control_axis = control_axis
-        self.sensor = sensor
-
-    def add_control_axis(self, control_axis):
-        """
-        Adds a control axis to the list of axis to control
-        :param control_axis: a ControlAxis to add
-        :return: Nothing
-        """
-        self.control_axis.append(control_axis)
-
-    def get_control_axis(self):
-        """
-        Gets the list of control axis
-        :return: Nothing
-        """
-        return self.control_axis
-
-    def set_sensor(self, sensor):
-        """
-        Set the sensor that is being calibrated
-        :param sensor: The Sensor that is being calibrated
-        :reutrn: Noting
-        """
-        self.sensor = sensor
-
-    def get_sensor(self):
-        """
-        Get the sensor being calibrated
-        :return: The Sensor being calibrated
-        """
-        return self.sensor
+        self._control_axis = control_axis
+        self._sensor = sensor
+        self._step_delay = step_delay
 
     def scan(self):
         """
@@ -126,18 +209,85 @@ class AxisController:
         :return: Nothing
         """
 
-        for axis in self.control_axis:
-            axis.first_step()
+        for axis in self._control_axis:
+            axis.update()
 
-        done = False
+        self._sensor.update()
 
-        while not done:
-
-            self.sensor.measure()
-            time.sleep(0.5)
-
+        # Start
+        if self._state == AxisControllerState.START:
+            for axis in self._control_axis:
+                axis.goto_step(0)
+            
+            self._state = AxisControllerState.START_WAIT
+        
+        # Start Wait
+        elif self._state == AxisControllerState.START_WAIT:
             done = True
-            for axis in self.control_axis:
-                if not axis.next_step():
+            for axis in self._control_axis:
+                if not axis.is_done():
                     done = False
-                    break
+
+            if done:
+                self._state = AxisControllerState.BEGIN_MEASURING
+
+        # Begin Step
+        elif self._state == AxisControllerState.BEGIN_STEP:
+            axis = self._control_axis[self._current_axis_index]
+            
+            print("Stepping Axis {}".format(type(axis).__name__))
+
+            next_step = axis.get_step() + 1
+
+            if next_step < axis.get_steps():
+                print("Axis Stepped")
+                axis.goto_step(next_step)
+                self._current_axis_index = 0
+                self._state = AxisControllerState.WAIT_STEP
+            else:
+                print("Axis did not step")
+                axis.goto_step(0)
+                self._state = AxisControllerState.NEXT_AXIS
+
+        # Wait Step
+        elif self._state == AxisControllerState.WAIT_STEP:
+            done = True
+            for axis in self._control_axis:
+                if not axis.is_done():
+                    done = False
+
+            if done:
+                self._state = AxisControllerState.BEGIN_MEASURING
+
+        # Next Axis
+        elif self._state == AxisControllerState.NEXT_AXIS:
+            next_index = self._current_axis_index + 1
+
+            #print("Current index {0}, next index {1}".format(self._current_axis_index, next_index))
+
+            if next_index < len(self._control_axis):
+                #print("Moving to next axis")
+                self._current_axis_index = next_index
+                self._state = AxisControllerState.BEGIN_STEP
+            else:
+                print("Done Scanning")
+                return True
+
+        # Begin Measuring
+        elif self._state == AxisControllerState.BEGIN_MEASURING:
+            self._sensor.begin_measuring()
+            self._state = AxisControllerState.WAIT_MEASURING
+
+        # Wait Measuring
+        elif self._state == AxisControllerState.WAIT_MEASURING:
+            if self._sensor.is_done():
+                self._state = AxisControllerState.BEGIN_STEP
+
+        elif self._state == AxisControllerState.DONE:
+            for axis in self._control_axis:
+                axis.reset()
+
+        cv2.waitKey(1)
+
+        return False
+

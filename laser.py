@@ -47,13 +47,16 @@ class Laser:
         self.signal_resource.write('OUTPUT ON')
 
         self.update_laser()
-    
+
     def __del__(self):
         self.enabled = False
         self.offset = self.off_signal
         self.update_laser()
 
     def update_laser(self):
+        """
+        Updates the laser to current power, frequency, and enabled
+        """
         if self.enabled:
             self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(self.frequency, 1.1, self.offset))
         else:
@@ -93,139 +96,27 @@ class LaserPowerAxis(ControlAxis):
     A ControlAxis to control the power to the laser
     """
 
-    laser = None
+    _laser = None
 
-    steps = 0
-    step_power = 0
-    start_power = 0
+    def __init__(self, minValue, maxValue, steps, laser):
+        super().__init__(minValue, maxValue, steps)
+        self._laser = laser
 
-    current_step = 0
-    current_power = 0
-
-    def __init__(self, laser, steps, step_power, start_power):
-        """
-        Create a LaserPowerAxis
-        :param laser: The Laser to control
-        :param steps: The number of steps to step through
-        :param step_power: The power per step
-        :param start_power: The power to start the first step at
-        """
-
-        self.laser = laser
-
-        self.steps = steps
-        self.step_power = step_power
-        self.start_power = start_power
-
-        self.current_step = 0
-        self.current_power = self.start_power
-
-    def get_current_step(self):
-        return self.current_step
-
-    def get_current_value(self):
-        return self.current_power
-
-    def goto_step(self, step):
-        pass
-
-    def goto_value(self, value):
-        pass
-
-    def first_step(self):
-        """
-        Move to the first step
-        :return: nothing
-        """
-        self.current_step = 0
-        self.current_power = self.start_power
-        self.next_step()
-
-    def next_step(self):
-        """
-        Move to the next step, and rolls back to the first if it hits the end
-        :return: Whether this was the first step (the previous step rolled over)
-        """
-
-        print("Laser Power Step {0}".format(self.current_step))
-        self.laser.set_power(self.current_power)
-
-        self.current_step += 1
-        self.current_power += self.step_power
-
-        if self.current_step >= self.steps:
-            self.current_step = 0
-            self.current_power = self.start_power
-
-        return self.current_step == 1
+    def _write_value(self, value):
+        self._laser.set_power(value)
+        print("Setting laser power to: {}".format(value))
 
 class LaserFequencyAxis(ControlAxis):
     """
     A ControlAxis to control the frequency to the laser
     """
 
-    laser = None
+    _laser = None
 
-    steps = 0
-    step_frequency = 0
-    start_frequency = 0
+    def __init__(self, minValue, maxValue, steps, laser):
+        super().__init__(minValue, maxValue, steps)
+        self._laser = laser
 
-    current_step = 0
-    current_frequency = 0
-
-    def __init__(self, laser, steps, step_frequency, start_frequency):
-        """
-        Create a LaserPowerAxis
-        :param laser: The Laser to control
-        :param steps: The number of steps to step through
-        :param step_frequency: The frequency per step
-        :param start_frequency: The frequency to start the first step at
-        """
-
-        self.laser = laser
-
-        self.steps = steps
-        self.step_frequency = step_frequency
-        self.start_frequency = start_frequency
-
-        self.current_step = 0
-        self.current_frequency = self.start_frequency
-
-    def get_current_step(self):
-        return self.current_step
-
-    def get_current_value(self):
-        return self.current_frequency
-
-    def goto_step(self, step):
-        pass
-
-    def goto_value(self, value):
-        pass
-
-    def first_step(self):
-        """
-        Move to the first step
-        :return: nothing
-        """
-        self.current_step = 0
-        self.current_frequency = self.start_frequency
-        self.next_step()
-
-    def next_step(self):
-        """
-        Move to the next step, and rolls back to the first if it hits the end
-        :return: Whether the next step will go back to the beginning
-        """
-
-        print("Laser Frequency Step {0}".format(self.current_step))
-        self.laser.set_frequency(self.current_frequency)
-
-        self.current_step += 1
-        self.current_frequency += self.step_frequency
-
-        if self.current_step >= self.steps:
-            self.current_step = 0
-            self.current_frequency = self.start_frequency
-
-        return self.current_step == 1
+    def _write_value(self, value):
+        self._laser.set_frequency(value)
+        print("Setting laser frequency to: {}".format(value))

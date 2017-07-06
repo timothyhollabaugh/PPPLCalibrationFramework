@@ -2,53 +2,50 @@ import time
 import visa
 import thorlabs_apt.core as apt_core
 import thorlabs_apt as apt
+from framework import AxisController
+from laser import Laser, LaserFequencyAxis, LaserPowerAxis
+from motion import LinearAxis, RotateAxis
+from camera import CameraSensor
 
-try:
-    print("Loading Axis")
-    from framework import AxisController
-    from laser import Laser, LaserFequencyAxis, LaserPowerAxis
-    from motion import LinearAxis, RotateAxis
-    from camera import CameraSensor
+def test():
+    try:
+        print("Opening Laser")
+        resource_manager = visa.ResourceManager()
+        power = resource_manager.open_resource('ASRL5::INSTR')
+        signal = resource_manager.open_resource('ASRL6::INSTR')
 
-    print("Opening Laser")
-    resource_manager = visa.ResourceManager()
-    power = resource_manager.open_resource('ASRL5::INSTR')
-    signal = resource_manager.open_resource('ASRL6::INSTR')
+        laser = Laser(power, 1, signal)
+        print("Done Opening Laser")
 
-    laser = Laser(power, 1, signal)
-    print("Done Opening Laser")
+        print("Opening Motion Stages")
+        linear = apt.Motor(45869584)
+        rotate = apt.Motor(40869426)
+        linear.move_home(True)
+        rotate.move_home(True)
+        print("Done Opening Motion Stages")
 
-    print("Opening Motion Stages")
-    linear = apt.Motor(45869584)
-    rotate = apt.Motor(40869426)
-    print("Done Opening Motion Stages")
+        #linear = None
+        #rotate = None
+        #laser = None
 
-    def step():
-        print("============================================================")
-        #print("Stepping")
-        #print("Enabling Laser")
-        laser.set_enabled(enable=True)
-        time.sleep(1)
-        #print("Disabling Laser")
-        laser.set_enabled(enable=False)
-        time.sleep(0.5)
+        print("Constructing Axis")
+        frequency_axis = LaserFequencyAxis(8.0, 11.0, 2, laser)
+        power_axis = LaserPowerAxis(0.2, 0.8, 2, laser)
+        linear_axis = LinearAxis(0.0, 25.4*3, 3, linear)
+        rotate_axis = RotateAxis(0.0, 25.4*3, 3, rotate)
 
-    print("Constructing Axis")
-    frequency_axis = LaserFequencyAxis(laser, 2, 8, 11)
-    power_axis = LaserPowerAxis(laser, 2, 0.7, 0.2)
-    linear_axis = LinearAxis(linear, 5, 25.4, 0)
-    rotate_axis = RotateAxis(rotate, 5, 25.4, 0, 576.2625)
+        camera_sensor = CameraSensor(laser, 0.5, 0.05)
 
-    camera_calibrated = CameraSensor(laser, 5, 0.05)
+        controller = AxisController([frequency_axis, power_axis, rotate_axis, linear_axis], camera_sensor, 1)
+        print("Done Constructing Axis")
 
-    controller = AxisController([frequency_axis, power_axis, rotate_axis, linear_axis], camera_calibrated)
-    print("Done Constructing Axis")
+        import IPython
+        IPython.embed()
 
-    import IPython
-    IPython.embed()
+        #controller.scan()
 
-    #controller.scan()
+    finally:
+        print("Cleaning Up")
+        apt_core._cleanup()
 
-finally:
-    print("Cleaning Up")
-    apt_core._cleanup()
+test()
