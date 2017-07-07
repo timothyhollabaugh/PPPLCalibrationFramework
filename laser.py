@@ -8,6 +8,7 @@ from framework import ControlAxis
 
 LASERS = []
 
+
 def get_devices():
     """
     Gets pyvisa resources to be used for a laser
@@ -20,7 +21,8 @@ def get_devices():
     for laser in LASERS:
         power_supply = laser.get_power_supply().query("*IDN?")
         signal_generator = laser.get_signal_generator().query("*IDN?")
-        devices.append(("Laser PS {} SG {}".format(power_supply, signal_generator), laser))
+        devices.append(("Laser PS {} SG {}".format(
+            power_supply, signal_generator), laser))
 
     for resource in resources:
 
@@ -30,10 +32,10 @@ def get_devices():
         for laser in LASERS:
             assert isinstance(laser, Laser)
             if laser.get_power_supply().resource_info[0].resource_name == resource \
-            or laser.get_signal_generator().resource_info[0].resource_name == resource:
+                    or laser.get_signal_generator().resource_info[0].resource_name == resource:
                 found_laser = laser
                 break
-        
+
         # If found, we do not want to use it again
         if found_laser is None:
             try:
@@ -53,6 +55,7 @@ def get_devices():
     resource_manager.close()
 
     return devices
+
 
 class Laser:
     """
@@ -112,9 +115,11 @@ class Laser:
         Updates the laser to current power, frequency, and enabled
         """
         if self.enabled:
-            self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(self.frequency, 1.1, self.offset))
+            self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
+                self.frequency, 1.1, self.offset))
         else:
-            self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(self.frequency, 1.1, self.off_signal))
+            self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
+                self.frequency, 1.1, self.off_signal))
 
     def set_enabled(self, enable=True):
         """
@@ -218,6 +223,7 @@ class LaserPowerAxis(ControlAxis):
     def _write_value(self, value):
         self._laser.set_power(value)
         print("Setting laser power to: {}".format(value))
+
 
 class LaserFequencyAxis(ControlAxis):
     """
