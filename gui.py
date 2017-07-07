@@ -4,9 +4,10 @@ Implements a GUI for the calibration
 import sys
 import pyforms
 from pyforms import BaseWidget
-from pyforms.Controls import ControlList, ControlText, ControlCombo, ControlNumber, ControlButton, ControlCheckBoxList
+from pyforms.Controls import ControlList, ControlText, ControlCombo, ControlNumber, ControlButton, ControlCheckBoxList, ControlEmptyWidget, ControlLabel, ControlDockWidget, ControlBase, ControlMdiArea
 from framework import AxisController
 from framework import ControlAxis
+import motion
 from motion import LinearAxis, RotateAxis
 from laser import LaserFequencyAxis, LaserPowerAxis
 
@@ -15,6 +16,8 @@ class ControllerWindow(BaseWidget):
     """
     A window to list the controllers
     """
+
+    _control_axis = []
 
     def __init__(self):
         super().__init__("Calibration Controller")
@@ -25,6 +28,10 @@ class ControllerWindow(BaseWidget):
             add_function=self._add_control,
             remove_function=self._remove_control
         )
+        
+        self._control_panel = ControlDockWidget(
+            label="Control Axis"
+        )
 
     def _add_control(self):
         win = ControlWindow(self.add_control)
@@ -34,8 +41,59 @@ class ControllerWindow(BaseWidget):
         pass
 
     def add_control(self, control):
+        assert isinstance(control, ControlAxis)
+        self._control_axis.append(control)
+        self._control_list += [control.get_name(), control.get_value(), control.get_min_value(), control.get_max_value(), control.get_step(), control.get_steps()]
+
+        control_panel = ControlAxisPanel(control)
+
+        #self._control_panel += control_panel
+
+        if self._control_panel.value is None:
+            self._control_panel.value = [control_panel, control_panel]
+        elif isinstance(self._control_panel.value, list):
+            self._control_panel.value = self._control_panel.value.extend(control_panel)
+        else:
+            self._control_panel.value = [self._control_panel.value, control_panel]
+        
         print(control)
 
+class ControlAxisPanel(BaseWidget):
+    """
+    A Panel that represents a ControlAxis
+    """
+
+    def __init__(self, control_axis):
+        assert isinstance(control_axis, ControlAxis)
+        super().__init__(control_axis.get_name())
+
+        self._control_axis = control_axis
+
+        self._name_field = ControlLabel(
+            label=control_axis.get_name()
+        )
+
+        self._value_field = ControlLabel(
+            label=str(control_axis.get_value())
+        )
+
+        self._decrease_button = ControlButton(
+            label="<-"
+        )
+
+        self._increase_button = ControlButton(
+            label="->"
+        )
+
+        self._edit_button = ControlButton(
+            label="Edit"
+        )
+
+        self.formset = [
+            "_name_field",
+            ("_decrease_button", "_value_field", "_increase_button"),
+            "_edit_button"
+        ]        
 
 class ControlWindow(BaseWidget):
     """
@@ -92,9 +150,11 @@ class ControlWindow(BaseWidget):
         )
 
         # The device list
-        self._device_field = ControlCheckBoxList(
+        self._device_field = ControlEmptyWidget(
             label="Devices"
         )
+
+        self._device_field.changed_event = self._on_device_checked
 
         # The Done button
         self._done_button = ControlButton(
@@ -102,20 +162,78 @@ class ControlWindow(BaseWidget):
         )
         self._done_button.value = self._done
 
-        self._on_type_change(self._type_field.current_index)
+        # The Status Line
+        self._status = ControlLabel(
+            label=""
+        )
+
+        #self._on_type_change(self._type_field.current_index)
 
     def _on_type_change(self, _):
         axis_type = self._type_field.value
-        devices = axis_type.get_devices()
-        print(devices)
-        self._device_field.clear()
-        for device in devices:
-            print(device)
-            self._device_field += device[0]
+        all_devices = axis_type.get_devices()
+        device_widget = DeviceList(all_devices)
+        self._device_field.value = device_widget
+
+
+    def _on_device_checked(self):
+        pass
 
     def _done(self):
-        self._done_function(None)
-        self.close()
+        axis_type = self._type_field.value
 
+        devices = self._device_field.value.get_devices()
+        devices_needed = axis_type.get_devices_needed()
 
-pyforms.start_app(ControllerWindow)
+        print(devices)
+        print(len(devices))
+        print(devices_needed)
+        print(len(devices_needed))
+        if len(devices) >= len(devices_needed):
+            name = self._name_field.value
+            min_value = self._min_field.value
+            max_value = self._max_field.value
+            steps = self._steps_field.value
+            
+            axis = axis_type(min_value, max_value, steps, name, devices)
+
+            self._done_function(axis)
+            self.close()
+        else:
+            self._status.value = "Select Devices to use!"
+            return
+
+class DeviceList(BaseWidget):
+    """
+    Lists devices
+    """
+
+    def __init__(self, all_devices):
+        super().__init__("Devices")
+
+        self._devices = all_devices
+
+        for key, devices in all_devices.items():
+            device_list = ControlCheckBoxList(
+                label=key
+            )
+            setattr(self, key, device_list)
+            for device in devices:
+                setattr(self, key, getattr(self, key) + device[0])
+
+    def get_devices(self):
+        """
+        Returns the selected devices
+        """
+        all_devices = {}
+        for key, devices in self._devices.items():
+            index = getattr(self, key).selected_row_index
+            device = devices[index]
+            all_devices[key] = device
+
+        return all_devices
+
+try:
+    pyforms.start_app(ControllerWindow)
+finally:
+    motion.cleanup()

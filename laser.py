@@ -8,51 +8,42 @@ from framework import ControlAxis
 
 LASERS = []
 
+RESOURCE_MANAGER = visa.ResourceManager()
 
 def get_devices():
     """
     Gets pyvisa resources to be used for a laser
     """
-    resource_manager = visa.ResourceManager()
-    resources = resource_manager.list_resources()
+    resources = RESOURCE_MANAGER.list_resources()
 
-    devices = []
-
-    for laser in LASERS:
-        power_supply = laser.get_power_supply().query("*IDN?")
-        signal_generator = laser.get_signal_generator().query("*IDN?")
-        devices.append(("Laser PS {} SG {}".format(
-            power_supply, signal_generator), laser))
+    devices = {"Power Supply": [], "Signal Generator": []}
 
     for resource in resources:
 
-        found_laser = None
+        try:
+            open_resource = RESOURCE_MANAGER.open_resource(resource)
+            open_resource.timeout = 100
+            name = open_resource.query("*IDN?").strip()
+            open_resource.close()
+        except VisaIOError as err:
+            print("Could not talk to", resource)
+            print(err)
+            continue
 
         # Look for this resource in lasers already defined
         for laser in LASERS:
             assert isinstance(laser, Laser)
             if laser.get_power_supply().resource_info[0].resource_name == resource \
                     or laser.get_signal_generator().resource_info[0].resource_name == resource:
-                found_laser = laser
+                name += " (laser)"
                 break
 
-        # If found, we do not want to use it again
-        if found_laser is None:
-            try:
-                open_resource = resource_manager.open_resource(resource)
-                open_resource.timeout = 100
-                name = open_resource.query("*IDN?").strip()
-                open_resource.close()
-            except VisaIOError as err:
-                print("Could not talk to", resource)
-                print(err)
-                continue
 
-            # Only add if it is a known power supply or signal generator
-            if 'AFG-3021' in name or 'GPD-4303S' in name:
-                devices.append((name, resource))
-
-    resource_manager.close()
+        # Only add if it is a known power supply or signal generator
+        if 'AFG-3021' in name:
+            devices["Signal Generator"].append((name, resource))
+        elif 'GPD-4303S' in name:
+            devices["Power Supply"].append((name, resource))
 
     return devices
 
@@ -177,48 +168,36 @@ class LaserPowerAxis(ControlAxis):
         return get_devices()
 
     def set_devices(self, devices):
-        if len(devices == 0):
-            return False
+        power_supply = None
+        signal_generator = None
+        for _, resource in devices.items():
+            try:
+                open_resource = RESOURCE_MANAGER.open_resource(resource[1])
+                open_resource.timeout = 100
+                name = open_resource.query("*IDN?").strip()
 
-        if isinstance(devices[0], Laser):
-            self._laser = devices[0]
-            return True
+                if 'AFG-3021' in name:
+                    signal_generator = open_resource
+                elif 'GPD-4303S' in name:
+                    power_supply = open_resource
+                else:
+                    open_resource.close()
+            except VisaIOError as err:
+                print("Could not talk to", resource)
+                print(err)
+                continue
 
-        else:
-            if len(devices) != 2:
-                return False
+        if not power_supply is None and not signal_generator is None:
+            self._laser = Laser(power_supply, 1, signal_generator)
+            LASERS.append(self._laser)
 
-            resource_manager = visa.ResourceManager()
-            power_supply = None
-            signal_generator = None
-
-            for device in devices:
-                try:
-                    open_resource = resource_manager.open_resource(device)
-                    name = open_resource.query("*IDN?")
-                    if 'AFG-3021' in name:
-                        signal_generator = open_resource
-                    elif 'GPD-4303S' in name:
-                        power_supply = open_resource
-                    else:
-                        open_resource.close()
-                except(VisaIOError):
-                    print("Could not talk to", device)
-
-            resource_manager.close()
-
-            if not power_supply is None and not signal_generator is None:
-                self._laser = Laser(power_supply, 1, signal_generator)
-                return True
-            else:
-                return False
 
     @staticmethod
     def get_devices_needed():
         """
         Returns the max number of devices needed
         """
-        return 2
+        return ['Power Supply', 'Signal Generator']
 
     def _write_value(self, value):
         self._laser.set_power(value)
@@ -239,45 +218,38 @@ class LaserFequencyAxis(ControlAxis):
         """
         return get_devices()
 
+
     def set_devices(self, devices):
-        if len(devices == 0):
-            return False
+        power_supply = None
+        signal_generator = None
+        for _, resource in devices.items():
+            try:
+                open_resource = RESOURCE_MANAGER.open_resource(resource[1])
+                open_resource.timeout = 100
+                name = open_resource.query("*IDN?").strip()
 
-        if isinstance(devices[0], Laser):
-            self._laser = devices[0]
-            return True
-
-        else:
-            if len(devices) != 2:
-                return False
-
-            resource_manager = visa.ResourceManager()
-            power_supply = None
-            signal_generator = None
-
-            for device in devices:
-                open_resource = resource_manager.open_resource(device)
-                name = open_resource.query("*IDN?")
                 if 'AFG-3021' in name:
                     signal_generator = open_resource
                 elif 'GPD-4303S' in name:
                     power_supply = open_resource
                 else:
                     open_resource.close()
-            resource_manager.close()
+            except VisaIOError as err:
+                print("Could not talk to", resource)
+                print(err)
+                continue
 
-            if not power_supply is None and not signal_generator is None:
-                self._laser = Laser(power_supply, 1, signal_generator)
-                return True
-            else:
-                return False
+        if not power_supply is None and not signal_generator is None:
+            self._laser = Laser(power_supply, 1, signal_generator)
+            LASERS.append(self._laser)
+
 
     @staticmethod
     def get_devices_needed():
         """
         Returns the max number of devices needed
         """
-        return 2
+        return ['Power Supply', 'Signal Generator']
 
     def _write_value(self, value):
         self._laser.set_frequency(value)

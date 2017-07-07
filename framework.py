@@ -35,9 +35,9 @@ class ControlAxis(ABC):
     @abstractmethod
     def get_devices():
         """
-        Return a list of available hardware devices that can be used
+        Return a dictionary of available hardware devices that can be used
         The devices are in a tuple of
-        (name, identifier)
+        (device name, identifier)
         The name is shown to the user
         """
         pass
@@ -46,6 +46,9 @@ class ControlAxis(ABC):
     def set_devices(self, devices):
         """
         Set the devices used by this axis
+        devices is a dictionary:
+        keys are from get_devices_needed()
+        values are identifiers for the device
         """
         pass
 
@@ -53,7 +56,7 @@ class ControlAxis(ABC):
     @abstractmethod
     def get_devices_needed():
         """
-        Return the number of devices needed
+        Return a list of category names of each device needed
         """
         pass
 

@@ -12,19 +12,21 @@ def get_devices():
     (human readable name, serial number)
     """
     serial_numbers = thorlabs_apt.list_available_devices()
-    devices = []
+    devices = {"Stage": []}
     for number in serial_numbers:
         info = thorlabs_apt.hardware_info(number[1])
-        devices.append(("{} {} S/N: {}".format(info[2].decode("utf-8"), info[0].decode("utf-8"), number[1]), number[1]))
+        devices["Stage"].append(( "{} {} S / N: {}".format(info[2].decode("utf - 8"), info[0].decode("utf - 8"), number[1]), number[1]))
     return devices
 
+def cleanup():
+    thorlabs_apt.core._cleanup()
 
 class LinearAxis(ControlAxis):
     """
     A ControlAxis to control the mm to the laser
     """
 
-    _linear_stage = None
+    _linear_stage=None
 
     @staticmethod
     def get_devices():
@@ -37,14 +39,18 @@ class LinearAxis(ControlAxis):
         """
         Sets the thorlabs stage used for this axis
         """
-        self._linear_stage = thorlabs_apt.Motor(devices[0][1])
+        if 'Stage' in devices and not devices['Stage'] is None:
+            self._linear_stage=thorlabs_apt.Motor(devices['Stage'][1])
+            return True
+        else:
+            return False
 
     @staticmethod
     def get_devices_needed():
         """
         Returns the number of thorlabs stages needed for this axis
         """
-        return 1
+        return ["Stage"]
 
     def _write_value(self, value):
         self._linear_stage.move_to(value)
@@ -62,11 +68,11 @@ class RotateAxis(ControlAxis):
     Axis to control a rotational axis pointed at a surface
     """
 
-    _rotation_stage = None
+    _rotation_stage=None
 
-    _distance_to_surface = 576.2625
-    _ticks_to_level = 8.1
-    _ticks_per_revolution = 66
+    _distance_to_surface=576.2625
+    _ticks_to_level=8.1
+    _ticks_per_revolution=66
 
     @staticmethod
     def get_devices():
@@ -79,14 +85,18 @@ class RotateAxis(ControlAxis):
         """
         Sets the thorlabs stage used for this axis
         """
-        self._linear_stage = thorlabs_apt.Motor(devices[0][1])
+        if 'Stage' in devices and not devices['Stage'] is None:
+            self._linear_stage=thorlabs_apt.Motor(devices['Stage'][1])
+            return True
+        else:
+            return False
 
     @staticmethod
     def get_devices_needed():
         """
         Returns the number of thorlabs stages needed for this axis
         """
-        return 1
+        return ["Stage"]
 
     def _write_value(self, value):
         self._rotation_stage.move_to(self._distance_to_angle(value))
@@ -96,7 +106,7 @@ class RotateAxis(ControlAxis):
         return self._ticks_to_level \
             + math.atan(distance / self._distance_to_surface) \
             * self._ticks_per_revolution \
-            / (2 * math.pi)
+            / (2 * math.pi) 
 
     def is_done(self):
         """
