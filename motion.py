@@ -1,5 +1,23 @@
+"""
+ControlAxis for motion control of Thorlabs stages
+"""
 import math
+import thorlabs_apt
 from framework import ControlAxis
+
+
+def get_devices():
+    """
+    Get the thorlabs hardware stages that can be used with LinearAxis and RotateAxis in a tuple
+    (human readable name, serial number)
+    """
+    serial_numbers = thorlabs_apt.list_available_devices()
+    devices = []
+    for number in serial_numbers:
+        info = thorlabs_apt.hardware_info(number[1])
+        devices += ("{} {} S/N: {}".format(info[2], info[0], number[1]), number[1])
+    return devices
+
 
 class LinearAxis(ControlAxis):
     """
@@ -8,9 +26,25 @@ class LinearAxis(ControlAxis):
 
     _linear_stage = None
 
-    def __init__(self, min_value, max_value, steps, linear_stage):
-        super().__init__(min_value, max_value, steps)
-        self._linear_stage = linear_stage
+    @staticmethod
+    def get_devices():
+        """
+        Returns a list of Thorlabs motion stages that can be used
+        """
+        return get_devices()
+
+    def set_devices(self, devices):
+        """
+        Sets the thorlabs stage used for this axis
+        """
+        self._linear_stage = thorlabs_apt.Motor(devices[0][1])
+
+    @staticmethod
+    def get_devices_needed():
+        """
+        Returns the number of thorlabs stages needed for this axis
+        """
+        return 1
 
     def _write_value(self, value):
         self._linear_stage.move_to(value)
@@ -21,6 +55,7 @@ class LinearAxis(ControlAxis):
         Returns if the stage is done moving
         """
         return not self._linear_stage.is_in_motion
+
 
 class RotateAxis(ControlAxis):
     """
@@ -33,9 +68,25 @@ class RotateAxis(ControlAxis):
     _ticks_to_level = 8.1
     _ticks_per_revolution = 66
 
-    def __init__(self, min_value, max_value, steps, rotation_stage):
-        super().__init__(min_value, max_value, steps)
-        self._rotation_stage = rotation_stage
+    @staticmethod
+    def get_devices():
+        """
+        Returns a list of Thorlabs motion stages that can be used
+        """
+        return get_devices()
+
+    def set_devices(self, devices):
+        """
+        Sets the thorlabs stage used for this axis
+        """
+        self._linear_stage = thorlabs_apt.Motor(devices[0][1])
+
+    @staticmethod
+    def get_devices_needed():
+        """
+        Returns the number of thorlabs stages needed for this axis
+        """
+        return 1
 
     def _write_value(self, value):
         self._rotation_stage.move_to(self._distance_to_angle(value))

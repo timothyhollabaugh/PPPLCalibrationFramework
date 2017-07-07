@@ -4,9 +4,9 @@ The framework for stepping and scanning axis and measuring the sensor values
 
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-import time
 
 import cv2
+
 
 class ControlAxis(ABC):
 
@@ -20,13 +20,42 @@ class ControlAxis(ABC):
     _min_value = 0
     _max_value = 0
     _steps = 0
+    _name = ""
 
-    def __init__(self, min_value, max_value, steps):
+    def __init__(self, min_value, max_value, steps, name, devices):
         self._step = -1
         self._value = min_value
         self._min_value = min_value
         self._max_value = max_value
         self._steps = steps
+        self._name = name
+        self.set_devices(devices)
+
+    @staticmethod
+    @abstractmethod
+    def get_devices():
+        """
+        Return a list of available hardware devices that can be used
+        The devices are in a tuple of
+        (name, identifier)
+        The name is shown to the user
+        """
+        pass
+
+    @abstractmethod
+    def set_devices(self, devices):
+        """
+        Set the devices used by this axis
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_devices_needed():
+        """
+        Return the number of devices needed
+        """
+        pass
 
     @abstractmethod
     def _write_value(self, value):
@@ -90,7 +119,6 @@ class ControlAxis(ABC):
             print("goto_value {} failed! {}".format(value, type(self).__name__))
             return False
 
-
     def get_min_value(self):
         """
         Gets the current min value
@@ -122,7 +150,7 @@ class ControlAxis(ABC):
         if move_to:
             self.goto_value(max_value)
             self._step = 0
-    
+
     def get_steps(self):
         """
         Get the number of steps
@@ -134,12 +162,25 @@ class ControlAxis(ABC):
         Set the number of steps
         """
         self._steps = steps
-    
+
     def reset(self):
         """
         Resets axis to not scanning
         """
         self._step = -1
+
+    def get_name(self):
+        """
+        Gets the name of this axis
+        """
+        return self._name
+
+    def set_name(self, name):
+        """
+        Sets the name of this axis
+        """
+        self._name = name
+
 
 class Sensor(ABC):
 
@@ -167,6 +208,7 @@ class Sensor(ABC):
         """
         return not self._measuring
 
+
 class AxisControllerState(Enum):
     """
     The state for the AxisController
@@ -179,6 +221,7 @@ class AxisControllerState(Enum):
     BEGIN_MEASURING = auto()
     WAIT_MEASURING = auto()
     DONE = auto()
+
 
 class AxisController:
     """
@@ -198,7 +241,7 @@ class AxisController:
         Creates a new Axis Controller with a list of ControlAxis to control
         :param control_axis: a list of ControlAxis in the order that they should be controlled
         """
-    
+
         self._control_axis = control_axis
         self._sensor = sensor
         self._step_delay = step_delay
@@ -218,9 +261,9 @@ class AxisController:
         if self._state == AxisControllerState.START:
             for axis in self._control_axis:
                 axis.goto_step(0)
-            
+
             self._state = AxisControllerState.START_WAIT
-        
+
         # Start Wait
         elif self._state == AxisControllerState.START_WAIT:
             done = True
@@ -234,7 +277,7 @@ class AxisController:
         # Begin Step
         elif self._state == AxisControllerState.BEGIN_STEP:
             axis = self._control_axis[self._current_axis_index]
-            
+
             print("Stepping Axis {}".format(type(axis).__name__))
 
             next_step = axis.get_step() + 1
@@ -290,4 +333,3 @@ class AxisController:
         cv2.waitKey(1)
 
         return False
-

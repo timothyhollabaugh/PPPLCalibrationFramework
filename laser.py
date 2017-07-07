@@ -1,6 +1,50 @@
+"""
+ControlAxis for use with a laser controlled by a power supply and a signal generator
+"""
 import time
+import visa
 from framework import ControlAxis
 
+LASERS = []
+
+def get_devices():
+    """
+    Gets pyvisa resources to be used for a laser
+    """
+    resource_manager = visa.ResourceManager()
+    resources = resource_manager.list_resources()
+
+    devices = []
+
+    for laser in LASERS:
+        power_supply = laser.get_power_supply().query("*IDN?")
+        signal_generator = laser.get_signal_generator().query("*IDN?")
+        devices += ("Laser PS {} SG {}".format(power_supply, signal_generator), laser)
+
+    for resource in resources:
+
+        found_laser = None
+
+        # Look for this resource in lasers already defined
+        for laser in LASERS:
+            assert isinstance(laser, Laser)
+            if laser.get_power_supply().resource_info[0].resource_name == resource \
+            or laser.get_signal_generator().resource_info[0].resource_name == resource:
+                found_laser = laser
+                break
+        
+        # If found, we do not want to use it again
+        if found_laser is None:
+            open_resource = resource_manager.open_resource(resource)
+            name = open_resource.query("*IDN?")
+
+            # Only add if it is a known power supply or signal generator
+            if 'AFG-3021' in name or 'GPD-4303S' in name:
+                devices += (name, resource)
+
+            open_resource.close()
+
+    resource_manager.close()
 
 class Laser:
     """
@@ -52,6 +96,8 @@ class Laser:
         self.enabled = False
         self.offset = self.off_signal
         self.update_laser()
+        self.power_resource.close()
+        self.signal_resource.close()
 
     def update_laser(self):
         """
@@ -90,6 +136,18 @@ class Laser:
         self.offset = power * -self.off_signal + self.off_signal
         self.update_laser()
 
+    def get_signal_generator(self):
+        """
+        Returns the signal generator resource in use
+        """
+        return self.signal_resource
+
+    def get_power_supply(self):
+        """
+        Returns the power supply resource in use
+        """
+        return self.power_resource
+
 
 class LaserPowerAxis(ControlAxis):
     """
@@ -98,9 +156,52 @@ class LaserPowerAxis(ControlAxis):
 
     _laser = None
 
-    def __init__(self, minValue, maxValue, steps, laser):
-        super().__init__(minValue, maxValue, steps)
-        self._laser = laser
+    @staticmethod
+    def get_devices():
+        """
+        Get the lasers / visa resources that can be used for lasers
+        """
+        return get_devices()
+
+    def set_devices(self, devices):
+        if len(devices == 0):
+            return False
+
+        if isinstance(devices[0], Laser):
+            self._laser = devices[0]
+            return True
+
+        else:
+            if len(devices) != 2:
+                return False
+
+            resource_manager = visa.ResourceManager()
+            power_supply = None
+            signal_generator = None
+
+            for device in devices:
+                open_resource = resource_manager.open_resource(device)
+                name = open_resource.query("*IDN?")
+                if 'AFG-3021' in name:
+                    signal_generator = open_resource
+                elif 'GPD-4303S' in name:
+                    power_supply = open_resource
+                else:
+                    open_resource.close()
+            resource_manager.close()
+
+            if not power_supply is None and not signal_generator is None:
+                self._laser = Laser(power_supply, 1, signal_generator)
+                return True
+            else:
+                return False
+
+    @staticmethod
+    def get_devices_needed():
+        """
+        Returns the max number of devices needed
+        """
+        return 2
 
     def _write_value(self, value):
         self._laser.set_power(value)
@@ -113,9 +214,52 @@ class LaserFequencyAxis(ControlAxis):
 
     _laser = None
 
-    def __init__(self, minValue, maxValue, steps, laser):
-        super().__init__(minValue, maxValue, steps)
-        self._laser = laser
+    @staticmethod
+    def get_devices():
+        """
+        Get the lasers / visa resources that can be used for lasers
+        """
+        return get_devices()
+
+    def set_devices(self, devices):
+        if len(devices == 0):
+            return False
+
+        if isinstance(devices[0], Laser):
+            self._laser = devices[0]
+            return True
+
+        else:
+            if len(devices) != 2:
+                return False
+
+            resource_manager = visa.ResourceManager()
+            power_supply = None
+            signal_generator = None
+
+            for device in devices:
+                open_resource = resource_manager.open_resource(device)
+                name = open_resource.query("*IDN?")
+                if 'AFG-3021' in name:
+                    signal_generator = open_resource
+                elif 'GPD-4303S' in name:
+                    power_supply = open_resource
+                else:
+                    open_resource.close()
+            resource_manager.close()
+
+            if not power_supply is None and not signal_generator is None:
+                self._laser = Laser(power_supply, 1, signal_generator)
+                return True
+            else:
+                return False
+
+    @staticmethod
+    def get_devices_needed():
+        """
+        Returns the max number of devices needed
+        """
+        return 2
 
     def _write_value(self, value):
         self._laser.set_frequency(value)
