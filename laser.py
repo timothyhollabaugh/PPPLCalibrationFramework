@@ -3,6 +3,7 @@ ControlAxis for use with a laser controlled by a power supply and a signal gener
 """
 import time
 import visa
+from visa import VisaIOError
 from framework import ControlAxis
 
 LASERS = []
@@ -19,7 +20,7 @@ def get_devices():
     for laser in LASERS:
         power_supply = laser.get_power_supply().query("*IDN?")
         signal_generator = laser.get_signal_generator().query("*IDN?")
-        devices += ("Laser PS {} SG {}".format(power_supply, signal_generator), laser)
+        devices.append(("Laser PS {} SG {}".format(power_supply, signal_generator), laser))
 
     for resource in resources:
 
@@ -35,16 +36,23 @@ def get_devices():
         
         # If found, we do not want to use it again
         if found_laser is None:
-            open_resource = resource_manager.open_resource(resource)
-            name = open_resource.query("*IDN?")
+            try:
+                open_resource = resource_manager.open_resource(resource)
+                open_resource.timeout = 100
+                name = open_resource.query("*IDN?").strip()
+                open_resource.close()
+            except VisaIOError as err:
+                print("Could not talk to", resource)
+                print(err)
+                continue
 
             # Only add if it is a known power supply or signal generator
             if 'AFG-3021' in name or 'GPD-4303S' in name:
-                devices += (name, resource)
-
-            open_resource.close()
+                devices.append((name, resource))
 
     resource_manager.close()
+
+    return devices
 
 class Laser:
     """
@@ -180,14 +188,18 @@ class LaserPowerAxis(ControlAxis):
             signal_generator = None
 
             for device in devices:
-                open_resource = resource_manager.open_resource(device)
-                name = open_resource.query("*IDN?")
-                if 'AFG-3021' in name:
-                    signal_generator = open_resource
-                elif 'GPD-4303S' in name:
-                    power_supply = open_resource
-                else:
-                    open_resource.close()
+                try:
+                    open_resource = resource_manager.open_resource(device)
+                    name = open_resource.query("*IDN?")
+                    if 'AFG-3021' in name:
+                        signal_generator = open_resource
+                    elif 'GPD-4303S' in name:
+                        power_supply = open_resource
+                    else:
+                        open_resource.close()
+                except(VisaIOError):
+                    print("Could not talk to", device)
+
             resource_manager.close()
 
             if not power_supply is None and not signal_generator is None:

@@ -32,9 +32,10 @@ class ControllerWindow(BaseWidget):
 
     def _remove_control(self):
         pass
-    
+
     def add_control(self, control):
         print(control)
+
 
 class ControlWindow(BaseWidget):
     """
@@ -63,6 +64,8 @@ class ControlWindow(BaseWidget):
 
         for class_type in ControlAxis.__subclasses__():
             self._type_field.add_item(class_type.__name__, class_type)
+
+        self._type_field.current_index_changed_event = self._on_type_change
 
         # The min_value
         self._min_field = ControlNumber(
@@ -99,8 +102,20 @@ class ControlWindow(BaseWidget):
         )
         self._done_button.value = self._done
 
+        self._on_type_change(self._type_field.current_index)
+
+    def _on_type_change(self, _):
+        axis_type = self._type_field.value
+        devices = axis_type.get_devices()
+        print(devices)
+        self._device_field.clear()
+        for device in devices:
+            print(device)
+            self._device_field += device[0]
+
     def _done(self):
         self._done_function(None)
         self.close()
+
 
 pyforms.start_app(ControllerWindow)

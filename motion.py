@@ -15,7 +15,7 @@ def get_devices():
     devices = []
     for number in serial_numbers:
         info = thorlabs_apt.hardware_info(number[1])
-        devices += ("{} {} S/N: {}".format(info[2], info[0], number[1]), number[1])
+        devices.append(("{} {} S/N: {}".format(info[2].decode("utf-8"), info[0].decode("utf-8"), number[1]), number[1]))
     return devices
 
 
