@@ -2,6 +2,7 @@
 from pyforms import BaseWidget
 from pyforms.Controls import ControlEmptyWidget, ControlLabel
 from gui.axis import AxisTab
+from gui.jog import JogTab
 import motion
 
 class ControllerWindow(BaseWidget):
@@ -27,6 +28,8 @@ class ControllerWindow(BaseWidget):
         self._jog_tab = ControlEmptyWidget(
             label='Jog Tab'
         )
+
+        self._jog_tab.value = JogTab()
 
         self._canvas = ControlEmptyWidget()
 
