@@ -4,11 +4,14 @@ ControlAxis for use with a laser controlled by a power supply and a signal gener
 import time
 import visa
 from visa import VisaIOError
+from pyforms import BaseWidget
+from pyforms.Controls import ControlNumber, ControlCombo
 from framework import ControlAxis
 
 RESOURCE_MANAGER = visa.ResourceManager()
 
 LASER = None
+
 
 def get_devices():
     """
@@ -30,15 +33,6 @@ def get_devices():
             print(err)
             continue
 
-        # Look for this resource in lasers already defined
-        for laser in LASERS:
-            assert isinstance(laser, Laser)
-            if laser.get_power_supply().resource_info[0].resource_name == resource \
-                    or laser.get_signal_generator().resource_info[0].resource_name == resource:
-                name += " (laser)"
-                break
-
-
         # Only add if it is a known power supply or signal generator
         if 'AFG-3021' in name:
             devices["Signal Generator"].append((name, resource))
@@ -46,6 +40,69 @@ def get_devices():
             devices["Power Supply"].append((name, resource))
 
     return devices
+
+
+DEVICES = get_devices()
+
+WIDGET = None
+
+
+def laser_custom_config():
+    global WIDGET
+
+    if WIDGET is None:
+        widget = BaseWidget("Laser Config")
+
+        widget.power_supply = ControlCombo(
+            label="Power Supply"
+        )
+
+        widget.power_supply += ('', None)
+
+        for power in DEVICES['Power Supply']:
+            widget.power_supply += power
+
+        widget.power_supply.current_index_changed_event = update_laser
+
+        widget.power_channel = ControlNumber(
+            label="Power Supply Channel",
+            default=1,
+            minimum=1,
+            maximum=4
+        )
+
+        widget.signal_generator = ControlCombo(
+            label="Power Supply"
+        )
+
+        widget.signal_generator += ('', None)
+
+        for signal in DEVICES['Signal Generator']:
+            widget.signal_generator += signal
+
+        widget.signal_generator.current_index_changed_event = update_laser
+
+        widget.formset = [
+            "h5:Laser Using",
+            'power_supply',
+            'power_channel',
+            'signal_generator',
+            "(All laser axis use the same laser)"
+        ]
+
+        WIDGET = widget
+
+    return WIDGET
+
+
+def update_laser(_):
+    global LASER
+    global WIDGET
+    power = WIDGET.power_supply.value
+    signal = WIDGET.signal_generator.value
+    channel = WIDGET.power_channel.value
+    if isinstance(power, visa.Resource) and isinstance(signal, visa.Resource):
+        LASER = Laser(power, channel, signal)
 
 
 class Laser:
@@ -158,49 +215,11 @@ class LaserPowerAxis(ControlAxis):
     A ControlAxis to control the power to the laser
     """
 
-    _laser = None
-
-    @staticmethod
-    def get_devices():
-        """
-        Get the lasers / visa resources that can be used for lasers
-        """
-        return get_devices()
-
-    def set_devices(self, devices):
-        power_supply = None
-        signal_generator = None
-        for _, resource in devices.items():
-            try:
-                open_resource = RESOURCE_MANAGER.open_resource(resource[1])
-                open_resource.timeout = 100
-                name = open_resource.query("*IDN?").strip()
-
-                if 'AFG-3021' in name:
-                    signal_generator = open_resource
-                elif 'GPD-4303S' in name:
-                    power_supply = open_resource
-                else:
-                    open_resource.close()
-            except VisaIOError as err:
-                print("Could not talk to", resource)
-                print(err)
-                continue
-
-        if not power_supply is None and not signal_generator is None:
-            self._laser = Laser(power_supply, 1, signal_generator)
-            LASERS.append(self._laser)
-
-
-    @staticmethod
-    def get_devices_needed():
-        """
-        Returns the max number of devices needed
-        """
-        return ['Power Supply', 'Signal Generator']
+    def get_custom_config(self):
+        return laser_custom_config()
 
     def _write_value(self, value):
-        self._laser.set_power(value)
+        LASER.set_power(value)
         print("Setting laser power to: {}".format(value))
 
 
@@ -209,48 +228,9 @@ class LaserFequencyAxis(ControlAxis):
     A ControlAxis to control the frequency to the laser
     """
 
-    _laser = None
-
-    @staticmethod
-    def get_devices():
-        """
-        Get the lasers / visa resources that can be used for lasers
-        """
-        return get_devices()
-
-
-    def set_devices(self, devices):
-        power_supply = None
-        signal_generator = None
-        for _, resource in devices.items():
-            try:
-                open_resource = RESOURCE_MANAGER.open_resource(resource[1])
-                open_resource.timeout = 100
-                name = open_resource.query("*IDN?").strip()
-
-                if 'AFG-3021' in name:
-                    signal_generator = open_resource
-                elif 'GPD-4303S' in name:
-                    power_supply = open_resource
-                else:
-                    open_resource.close()
-            except VisaIOError as err:
-                print("Could not talk to", resource)
-                print(err)
-                continue
-
-        if not power_supply is None and not signal_generator is None:
-            self._laser = Laser(power_supply, 1, signal_generator)
-            LASERS.append(self._laser)
-
-
-    @staticmethod
-    def get_devices_needed():
-        """
-        Returns the max number of devices needed
-        """
-        return ['Power Supply', 'Signal Generator']
+    def get_custom_config(self):
+        return laser_custom_config()
 
     def _write_value(self, value):
-        self._laser.set_frequency(value)
+        LASER.set_frequency(value)
         print("Setting laser frequency to: {}".format(value))

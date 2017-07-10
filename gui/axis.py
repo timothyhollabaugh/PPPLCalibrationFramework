@@ -31,8 +31,10 @@ class AxisTab(BaseWidget):
         self._axis_custom = ControlEmptyWidget()
 
         self.formset = ('_axis_list', '||', [
-            ('_axis_name','', '_axis_hw_type'),
-            '_axis_custom'
+            ('_axis_name', '', '_axis_hw_type'),
+            '=',
+            '_axis_custom',
+            ''
         ])
 
     def _update_shown_axis(self):
