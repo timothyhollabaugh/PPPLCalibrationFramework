@@ -1,5 +1,9 @@
 
 import pyforms
 from gui import ControllerWindow
+import motion
 
-pyforms.start_app(ControllerWindow)
+try:
+    pyforms.start_app(ControllerWindow)
+finally:
+    motion.cleanup()

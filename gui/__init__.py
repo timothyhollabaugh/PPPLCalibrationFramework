@@ -2,6 +2,7 @@
 from pyforms import BaseWidget
 from pyforms.Controls import ControlEmptyWidget, ControlLabel
 from gui.axis import AxisTab
+import motion
 
 class ControllerWindow(BaseWidget):
     """
@@ -39,3 +40,6 @@ class ControllerWindow(BaseWidget):
                 "Jog": ['_jog_tab']
             }
         ]
+
+    def before_close_event(self):
+        motion.cleanup()

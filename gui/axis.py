@@ -53,7 +53,6 @@ class AxisTab(BaseWidget):
             self._axis_name.value = ''
             self._axis_hw_type.value = ''
             self._axis_custom.value = None
-        print(self._axis_list.form.width())
 
 
     def _on_add_axis(self):
