@@ -14,10 +14,6 @@ class ControllerWindow(BaseWidget):
     def __init__(self):
         super().__init__("Calibration Controller")
 
-        self._label = ControlLabel(
-            label='Hello'
-        )
-
         self._axis_tab = ControlEmptyWidget(
             label='Axis Tab'
         )
@@ -32,13 +28,14 @@ class ControllerWindow(BaseWidget):
             label='Jog Tab'
         )
 
+        self._canvas = ControlEmptyWidget()
+
         self.formset = [
-            '_label',
-            {
+            ({
                 "Axis": ['_axis_tab'],
                 "Points": ['_points_tab'],
                 "Jog": ['_jog_tab']
-            }
+            }, '||', '_canvas')
         ]
 
     def before_close_event(self):

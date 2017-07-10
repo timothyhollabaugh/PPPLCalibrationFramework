@@ -30,12 +30,7 @@ class AxisTab(BaseWidget):
         self._axis_hw_type = ControlLabel()
         self._axis_custom = ControlEmptyWidget()
 
-        self.formset = ('_axis_list', '||', [
-            ('_axis_name', '', '_axis_hw_type'),
-            '=',
-            '_axis_custom',
-            ''
-        ])
+        self.formset = ['_axis_list', '_axis_custom']
 
     def _update_shown_axis(self):
         index = self._axis_list.selected_row_index
