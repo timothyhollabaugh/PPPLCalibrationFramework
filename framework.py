@@ -2,11 +2,20 @@
 The framework for stepping and scanning axis and measuring the sensor values
 """
 
-from abc import ABC, abstractmethod
 from enum import Enum, auto
+from abc import ABC, abstractmethod
+from pyforms import BaseWidget
+from pyforms.Controls import ControlCombo, ControlLabel
 
 import cv2
 
+class AxisType(Enum):
+    """
+    A type of axis as used for movement
+    """
+    X_Axis = "X Axis"
+    Y_Axis = "Y Axis"
+    Auxiliary_Axis = "Aux Axis"
 
 class ControlAxis(ABC):
 
@@ -15,50 +24,12 @@ class ControlAxis(ABC):
     Must be subclassed for each actual axis being used
     """
 
-    _step = -1
     _value = 0
-    _min_value = 0
-    _max_value = 0
-    _steps = 0
     _name = ""
+    _type = None
 
-    def __init__(self, min_value, max_value, steps, name, devices):
-        self._step = -1
-        self._value = min_value
-        self._min_value = min_value
-        self._max_value = max_value
-        self._steps = steps
+    def __init__(self, name):
         self._name = name
-        self.set_devices(devices)
-
-    @staticmethod
-    @abstractmethod
-    def get_devices():
-        """
-        Return a dictionary of available hardware devices that can be used
-        The devices are in a tuple of
-        (device name, identifier)
-        The name is shown to the user
-        """
-        pass
-
-    @abstractmethod
-    def set_devices(self, devices):
-        """
-        Set the devices used by this axis
-        devices is a dictionary:
-        keys are from get_devices_needed()
-        values are identifiers for the device
-        """
-        pass
-
-    @staticmethod
-    @abstractmethod
-    def get_devices_needed():
-        """
-        Return a list of category names of each device needed
-        """
-        pass
 
     @abstractmethod
     def _write_value(self, value):
@@ -74,35 +45,29 @@ class ControlAxis(ABC):
         """
         pass
 
-    def get_value_per_step(self):
-        """
-        Returns the value that gets moved per step
-        """
-        return (self._max_value - self._min_value) / self._steps
-
-    def get_step(self):
-        """
-        Gets the current step that this axis is at
-        """
-        return self._step
-
-    def goto_step(self, step):
-        """
-        Goes to a specified step
-        Returns whether the move was successful
-        """
-        if step >= 0 and step < self._steps:
-            self._step = step
-            return self.goto_value(self._min_value + step * self.get_value_per_step())
-        else:
-            print("goto_step {} failed! {}".format(step, type(self).__name__))
-            return False
-
     def is_done(self):
         """
         Returns whether the axis is done moving
         """
         return True
+
+    def get_custom_config(self):
+        """
+        Gets a custom pywidgets BaseWidget to display in the axis configuation area of the gui when this axis is selected
+        """
+        return None
+
+    def get_type(self):
+        """
+        Get the AxisType that this axis is
+        """
+        return self._type
+
+    def set_type(self, atype):
+        """
+        Set the AxisType that this axis is used for
+        """
+        self._type = atype
 
     def get_value(self):
         """
@@ -115,62 +80,8 @@ class ControlAxis(ABC):
         Gots to a specified value, regardless of what the step is
         Returns if successful
         """
-        if value <= self._max_value and value >= self._min_value:
-            self._value = value
-            return self._write_value(self._value)
-        else:
-            print("goto_value {} failed! {}".format(value, type(self).__name__))
-            return False
-
-    def get_min_value(self):
-        """
-        Gets the current min value
-        """
-        return self._min_value
-
-    def set_min_value(self, min_value, move_to=False):
-        """
-        Gets the new minimum value and optionally moves to
-        it and sets the step to 0 if the current value is now too low
-        """
-        self._min_value = min_value
-        if move_to:
-            self.goto_value(min_value)
-            self._step = 0
-
-    def get_max_value(self):
-        """
-        Gets the current max value
-        """
-        return self._max_value
-
-    def set_max_value(self, max_value, move_to=False):
-        """
-        Gets the new maximum value and optionally moves to
-        it and sets the step to 0 if the current value is now too low
-        """
-        self._max_value = max_value
-        if move_to:
-            self.goto_value(max_value)
-            self._step = 0
-
-    def get_steps(self):
-        """
-        Get the number of steps
-        """
-        return self._steps
-
-    def set_steps(self, steps):
-        """
-        Set the number of steps
-        """
-        self._steps = steps
-
-    def reset(self):
-        """
-        Resets axis to not scanning
-        """
-        self._step = -1
+        self._value = value
+        return self._write_value(self._value)
 
     def get_name(self):
         """

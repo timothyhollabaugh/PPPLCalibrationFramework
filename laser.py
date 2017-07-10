@@ -6,9 +6,9 @@ import visa
 from visa import VisaIOError
 from framework import ControlAxis
 
-LASERS = []
-
 RESOURCE_MANAGER = visa.ResourceManager()
+
+LASER = None
 
 def get_devices():
     """
