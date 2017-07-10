@@ -72,7 +72,7 @@ def laser_custom_config():
         )
 
         widget.signal_generator = ControlCombo(
-            label="Power Supply"
+            label="Signal Generator"
         )
 
         widget.signal_generator += ('', None)
@@ -101,8 +101,11 @@ def update_laser(_):
     power = WIDGET.power_supply.value
     signal = WIDGET.signal_generator.value
     channel = WIDGET.power_channel.value
-    if isinstance(power, visa.Resource) and isinstance(signal, visa.Resource):
-        LASER = Laser(power, channel, signal)
+    if power is not None and power != '' and signal is not None and signal != '':
+        print("Making Laser")
+        power_resource = RESOURCE_MANAGER.open_resource(power)
+        signal_resource = RESOURCE_MANAGER.open_resource(power)
+        LASER = Laser(power_resource, channel, signal_resource)
 
 
 class Laser:
@@ -132,6 +135,8 @@ class Laser:
         :param power_channel: The channel on the power supply to use
         :param signal_resource: The pyvisa resource for the laser signal generator (Must be an AFG-3021 for now)
         """
+
+        print("Initing Laser")
 
         self.power_resource = power_resource
         self.power_channel = power_channel
