@@ -3,6 +3,7 @@ ControlAxis for motion control of Thorlabs stages
 """
 import math
 import thorlabs_apt
+from PyQt5.QtCore import QTimer
 from pyforms import BaseWidget
 from pyforms.Controls import ControlCombo, ControlNumber
 from framework import ControlAxis
@@ -39,6 +40,7 @@ class LinearAxis(ControlAxis):
 
     _linear_stage = None
     _widget = None
+    _homing_timer = None
 
     def get_custom_config(self):
         """
@@ -84,10 +86,30 @@ class LinearAxis(ControlAxis):
             print("Update:", self._widget.device_list.value)
             self._linear_stage = thorlabs_apt.Motor(self._widget.device_list.value)
             self._linear_stage.identify()
+            self._value = self.get_current_value()
+            if not self._linear_stage.has_homing_been_completed:
+                self.goto_home()
 
     def _write_value(self, value):
         self._linear_stage.move_to(value)
         print("Setting linear position to: {}".format(value))
+
+    def get_current_value(self):
+        return self._linear_stage.position
+
+    def _update_homing(self):
+        if self.is_done():
+            self._write_value(self._value)
+            self._homing_timer.stop()
+            self._homing_timer = None
+
+    def goto_home(self):
+        self._value = 0
+        self._linear_stage.move_home()
+
+        self._homing_timer = QTimer()
+        self._homing_timer.timeout.connect(self._update_homing)
+        self._homing_timer.start(500)
 
     def is_done(self):
         """
@@ -108,6 +130,8 @@ class RotateAxis(ControlAxis):
     _ticks_per_revolution = 66
 
     _widget = None
+
+    _homing_timer = None
 
     def get_custom_config(self):
         """
@@ -163,16 +187,43 @@ class RotateAxis(ControlAxis):
             self._rotation_stage = thorlabs_apt.Motor(
                 self._widget.device_list.value)
             self._rotation_stage.identify()
+            self._value = self.get_current_value()
+            if not self._rotation_stage.has_homing_been_completed:
+                self.goto_home()
 
     def _write_value(self, value):
         self._rotation_stage.move_to(self._distance_to_angle(value))
         print("Setting rotation position to: {}".format(value))
 
     def _distance_to_angle(self, distance):
-        return self._ticks_to_level \
-            + math.atan(distance / self._distance_to_surface) \
-            * self._ticks_per_revolution \
-            / (2 * math.pi)
+        return (self._ticks_to_level
+                + math.atan(distance / self._distance_to_surface)
+                * self._ticks_per_revolution
+                / (2 * math.pi))
+
+    def _angle_to_distance(self, angle):
+        return (self._distance_to_surface\
+                * math.tan(
+                    (angle - self._ticks_to_level)
+                    * (2 * math.pi)
+                    / self._ticks_per_revolution))
+
+    def get_current_value(self):
+        return self._angle_to_distance(self._rotation_stage.position)
+
+    def _update_homing(self):
+        if self.is_done():
+            self._write_value(self._value)
+            self._homing_timer.stop()
+            self._homing_timer = None
+
+    def goto_home(self):
+        self._value = 0
+        self._rotation_stage.move_home()
+
+        self._homing_timer = QTimer()
+        self._homing_timer.timeout.connect(self._update_homing)
+        self._homing_timer.start(500)
 
     def is_done(self):
         """

@@ -28,6 +28,9 @@ class ControlAxis(ABC):
     _name = ""
     _type = None
 
+    _max = 0
+    _min = 0
+
     def __init__(self, name):
         self._name = name
 
@@ -57,21 +60,39 @@ class ControlAxis(ABC):
         """
         return None
 
-    def get_type(self):
+    def set_min(self, min_value):
         """
-        Get the AxisType that this axis is
+        Sets the min value
         """
-        return self._type
+        self._min = min_value
 
-    def set_type(self, atype):
+    def set_max(self, max_value):
         """
-        Set the AxisType that this axis is used for
+        Sets the max value
         """
-        self._type = atype
+        self._max = max_value
+
+    def get_min(self):
+        """
+        Gets the min value
+        """
+        return self._min
+
+    def get_max(self):
+        """
+        Gets the max value
+        """
+        return self._max
 
     def get_value(self):
         """
-        Gets the current value that this axis is at
+        Gets the target value
+        """
+        return self._value
+
+    def get_current_value(self):
+        """
+        Gets the current value (may not be the target)
         """
         return self._value
 
@@ -80,8 +101,20 @@ class ControlAxis(ABC):
         Gots to a specified value, regardless of what the step is
         Returns if successful
         """
+        if value < self._min:
+            value = self._min
+
+        if value > self._max:
+            value = self._max
+
         self._value = value
         return self._write_value(self._value)
+
+    def goto_home(self):
+        """
+        Homes the axis to go to the endstop
+        """
+        self.goto_value(0)
 
     def get_name(self):
         """
