@@ -26,7 +26,7 @@ class AxisTab(BaseWidget):
             label='Axis List',
             default='',
             add_function=self._on_add_axis,
-            remove_function=self._on_remove_axis,
+            remove_function=self._on_remove_axis
         )
 
         self._axis_list.item_selection_changed_event = self._on_selection_changed
@@ -134,6 +134,24 @@ class AxisTab(BaseWidget):
         win = NewAxisWindow(self.add_axis)
         win.show()
 
+    def _on_remove_axis(self):
+        print("REMOVING")
+        index = self._axis_list.selected_row_index
+        if not index is None:
+            axis = self._axis[index]
+            assert isinstance(axis, ControlAxis)
+
+            self._axis_list -= index
+            self._axis.pop(index)
+
+            if not axis is None:
+                if axis == self._xaxis:
+                    self._xaxis = None
+                if axis == self._yaxis:
+                    self._yaxis = None
+            
+            self._send_events()
+
     def add_axis(self, axis):
         """
         Add an axis to the list
@@ -143,9 +161,6 @@ class AxisTab(BaseWidget):
             self._axis += [axis]
             self._update_shown_axis()
             self._send_events()
-
-    def _on_remove_axis(self):
-        pass
 
     def _on_selection_changed(self):
         self._update_shown_axis()
