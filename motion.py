@@ -82,20 +82,25 @@ class LinearAxis(ControlAxis):
         return self._widget
 
     def _update_stage(self, _):
-        if not self._widget.device_list.value is None and self._widget.device_list.value != '':
-            print("Update:", self._widget.device_list.value)
-            self._linear_stage = thorlabs_apt.Motor(self._widget.device_list.value)
+        device = self._widget.device_list.value
+        if device is not None and device != 'None':
+            print("Update:", device)
+            self._linear_stage = thorlabs_apt.Motor(device)
             self._linear_stage.identify()
             self._value = self.get_current_value()
             if not self._linear_stage.has_homing_been_completed:
                 self.goto_home()
 
     def _write_value(self, value):
-        self._linear_stage.move_to(value)
-        print("Setting linear position to: {}".format(value))
+        if self._linear_stage is not None:
+            self._linear_stage.move_to(value)
+            print("Setting linear position to: {}".format(value))
 
     def get_current_value(self):
-        return self._linear_stage.position
+        if self._linear_stage is not None:
+            return self._linear_stage.position
+        else:
+            return 0
 
     def _update_homing(self):
         if self.is_done():
@@ -105,17 +110,20 @@ class LinearAxis(ControlAxis):
 
     def goto_home(self):
         self._value = 0
-        self._linear_stage.move_home()
 
-        self._homing_timer = QTimer()
-        self._homing_timer.timeout.connect(self._update_homing)
-        self._homing_timer.start(500)
+        if self._linear_stage is not None:
+            self._linear_stage.move_home()
+
+            self._homing_timer = QTimer()
+            self._homing_timer.timeout.connect(self._update_homing)
+            self._homing_timer.start(500)
 
     def is_done(self):
         """
         Returns if the stage is done moving
         """
-        return not self._linear_stage.is_in_motion
+        if self._linear_stage is not None:
+            return not self._linear_stage.is_in_motion
 
 
 class RotateAxis(ControlAxis):
@@ -184,7 +192,7 @@ class RotateAxis(ControlAxis):
         self._distance_to_surface = self._widget.distance_field.value
 
     def _update_stage(self, _):
-        if not self._widget.device_list.value is None and self._widget.device_list.value != '':
+        if not self._widget.device_list.value is None and self._widget.device_list.value != 'None':
             self._rotation_stage = thorlabs_apt.Motor(
                 self._widget.device_list.value)
             self._rotation_stage.identify()
@@ -193,8 +201,9 @@ class RotateAxis(ControlAxis):
                 self.goto_home()
 
     def _write_value(self, value):
-        self._rotation_stage.move_to(self._distance_to_angle(value))
-        print("Setting rotation position to: {}".format(value))
+        if self._rotation_stage is not None:
+            self._rotation_stage.move_to(self._distance_to_angle(value))
+            print("Setting rotation position to: {}".format(value))
 
     def _distance_to_angle(self, distance):
         return (self._ticks_to_level
@@ -210,7 +219,10 @@ class RotateAxis(ControlAxis):
                     / self._ticks_per_revolution))
 
     def get_current_value(self):
-        return self._angle_to_distance(self._rotation_stage.position)
+        if self._rotation_stage is not None:
+            return self._angle_to_distance(self._rotation_stage.position)
+        else:
+            return 0
 
     def _update_homing(self):
         if self.is_done():
@@ -220,14 +232,18 @@ class RotateAxis(ControlAxis):
 
     def goto_home(self):
         self._value = 0
-        self._rotation_stage.move_home()
+        if self._rotation_stage is not None:
+            self._rotation_stage.move_home()
 
-        self._homing_timer = QTimer()
-        self._homing_timer.timeout.connect(self._update_homing)
-        self._homing_timer.start(500)
+            self._homing_timer = QTimer()
+            self._homing_timer.timeout.connect(self._update_homing)
+            self._homing_timer.start(500)
 
     def is_done(self):
         """
         Returns if the stage is done moving
         """
-        return not self._rotation_stage.is_in_motion
+        if self._rotation_stage is not None:
+            return not self._rotation_stage.is_in_motion
+        else:
+            return False
