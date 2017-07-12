@@ -6,7 +6,7 @@ import visa
 from visa import VisaIOError
 from pyforms import BaseWidget
 from pyforms.Controls import ControlNumber, ControlCombo
-from framework import ControlAxis
+from framework import ControlAxis, OutputDevice
 
 RESOURCE_MANAGER = visa.ResourceManager()
 
@@ -57,7 +57,7 @@ def laser_custom_config():
             label="Power Supply"
         )
 
-        widget.power_supply += ('', None)
+        widget.power_supply += ('None', None)
 
         for power in DEVICES['Power Supply']:
             widget.power_supply += power
@@ -75,7 +75,7 @@ def laser_custom_config():
             label="Signal Generator"
         )
 
-        widget.signal_generator += ('', None)
+        widget.signal_generator += ('None', None)
 
         for signal in DEVICES['Signal Generator']:
             widget.signal_generator += signal
@@ -104,7 +104,7 @@ def update_laser(_):
     if power is not None and power != '' and signal is not None and signal != '':
         print("Making Laser")
         power_resource = RESOURCE_MANAGER.open_resource(power)
-        signal_resource = RESOURCE_MANAGER.open_resource(power)
+        signal_resource = RESOURCE_MANAGER.open_resource(signal)
         LASER = Laser(power_resource, channel, signal_resource)
 
 
@@ -128,7 +128,7 @@ class Laser:
     frequency = 1
     enabled = False
 
-    def __init__(self, power_resource, power_channel, signal_resource):
+    def __init__(self, power_resource, power_channel, signal_resource, update_function=None):
         """
         Create a Laser
         :param power_resource: The pyvisa resource for the laser power supply (Must be a GPD-4303S for now)
@@ -137,6 +137,8 @@ class Laser:
         """
 
         print("Initing Laser")
+        print("Signal Generator:", signal_resource.query('*IDN?'))
+        print("Power Supply:", power_resource.query('*IDN?'))
 
         self.power_resource = power_resource
         self.power_channel = power_channel
@@ -154,7 +156,7 @@ class Laser:
         # Turn on the signal
         self.signal_resource.write('OUTPUT ON')
 
-        self.update_laser()
+        self.set_power(1)
 
     def __del__(self):
         self.enabled = False
@@ -167,12 +169,13 @@ class Laser:
         """
         Updates the laser to current power, frequency, and enabled
         """
+        print("Updating Laser")
         if self.enabled:
-            self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
-                self.frequency, 1.1, self.offset))
+            print(self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
+                self.frequency, 1.1, self.offset)))
         else:
-            self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
-                self.frequency, 1.1, self.off_signal))
+            print(self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
+                self.frequency, 1.1, self.off_signal)))
 
     def set_enabled(self, enable=True):
         """
@@ -213,6 +216,20 @@ class Laser:
         Returns the power supply resource in use
         """
         return self.power_resource
+
+
+class LaserOutput(OutputDevice):
+    """
+    Can enable/disable the laser
+    """
+
+    def get_custom_config(self):
+        return laser_custom_config()
+
+    def set_enabled(self, enable=True):
+        global LASER
+        if isinstance(LASER, Laser):
+            LASER.set_enabled(enable)
 
 
 class LaserPowerAxis(ControlAxis):

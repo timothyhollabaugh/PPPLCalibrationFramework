@@ -1,15 +1,18 @@
 
 from PyQt5.QtWidgets import QSizePolicy, QGridLayout, QPushButton, QWidget, QVBoxLayout
 from pyforms import BaseWidget
-from pyforms.Controls import ControlButton, ControlSlider, ControlEmptyWidget, ControlBase, ControlNumber
+from pyforms.Controls import ControlButton, ControlSlider, ControlEmptyWidget, ControlBase, ControlNumber, ControlCheckBox
 import qtawesome as qta
-from framework import ControlAxis
-
+from framework import ControlAxis, OutputDevice
 
 class JogTab(BaseWidget):
 
-    def __init__(self):
+    _output = None
+
+    def __init__(self, update_function = None):
         super().__init__("Jog Tab")
+
+        self._update_function = update_function
 
         self._xy_panel = ControlEmptyWidget()
         self._xy_panel.setSizePolicy(QSizePolicy(
@@ -17,13 +20,54 @@ class JogTab(BaseWidget):
         self._xy_panel.value = ControlJog()
 
         self._aux_panel = ControlEmptyWidget()
+        self._aux_panel.setSizePolicy(QSizePolicy(
+            QSizePolicy.Expanding, QSizePolicy.Fixed))
+
+        self._space = ControlEmptyWidget()
+
+        self._enable_output = ControlCheckBox(
+            label="Output Enabled"
+        )
+
+        self.formset = [
+            '_xy_panel',
+            '_aux_panel',
+            '_space',
+            '_enable_output'
+        ]
+
+        self._enable_output.changed_event = self._on_enable_change
 
     def update_events(self, event):
         if isinstance(self._xy_panel.value, ControlJog):
             self._xy_panel.value.update_event(event)
 
+        xaxis = None
+        yaxis = None
+
+        if 'xaxis' in event:
+            xaxis = event['xaxis']
+
+        if 'yaxis' in event:
+            yaxis = event['yaxis']
+
         if 'axis' in event:
-            self._aux_panel.value = AuxJog(event['axis'])
+            aux_axis = []
+            for axis in event['axis']:
+                if axis is not None:
+                    aux_axis.append(AuxJog(axis))
+            self._aux_panel.value = aux_axis
+
+        if 'output' in event:
+            self._output = event['output']
+
+    def _send_events(self):
+        if callable(self._update_function):
+            self._update_function({'output_enable': self._enable_output.value})
+
+    def _on_enable_change(self):
+        if isinstance(self._output, OutputDevice):
+            self._output.set_enabled(enable=self._enable_output.value)
 
 
 class ControlJog(ControlBase):
@@ -81,7 +125,8 @@ class ControlJog(ControlBase):
             label="Step Size",
             default=self._step,
             minimum=0,
-            maximum=float('inf')
+            maximum=float('inf'),
+            decimals=5
         )
 
         layout.addLayout(buttons_layout)
@@ -96,7 +141,6 @@ class ControlJog(ControlBase):
         """
         Update the event
         """
-        print("Jog Panel Got Event: ", event)
         if 'xaxis' in event:
             self._xaxis = event['xaxis']
         if 'yaxis' in event:
@@ -146,22 +190,21 @@ class AuxJog(BaseWidget):
     def __init__(self, axis):
         super().__init__("Aux Jog")
 
-        for caxis in axis:
-            assert isinstance(caxis, ControlAxis)
+        assert isinstance(axis, ControlAxis)
 
-            widget = ControlSlider(
-                label=caxis.get_name(),
-                max=caxis.get_max(),
-                min=caxis.get_min()
-            )
-            widget.value = caxis.get_value()
+        self._axis = axis
 
-            def on_update():
-                """
-                Sets the slider to the value
-                """
-                caxis.goto_value(widget.value)
+        self._value_field = ControlNumber(
+            label=axis.get_name(),
+            default=axis.get_value(),
+            minimum=axis.get_min(),
+            maximum=axis.get_max(),
+            decimals=5
+        )
 
-            widget.changed_event = on_update
+        self._value_field.changed_event = self._update_value
 
-            setattr(self, caxis.get_name(), widget)
+    def _update_value(self):
+        value = self._value_field.value
+        print(value)
+        self._axis.goto_value(value)

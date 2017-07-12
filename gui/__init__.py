@@ -4,6 +4,7 @@ from pyforms import BaseWidget
 from pyforms.Controls import ControlEmptyWidget, ControlLabel
 from gui.axis import AxisTab
 from gui.jog import JogTab
+from gui.output import OutputTab
 import motion
 
 class ControllerWindow(BaseWidget):
@@ -33,13 +34,14 @@ class ControllerWindow(BaseWidget):
         'axis'
         'xaxis'
         'yaxis'
+        'output'
         """
         self._update_functions += (event, function)
 
     def _update_events(self, events):
+        print(events)
         if isinstance(self._tabs.value, TabWidget):
             self._tabs.value.update_events(events)
-        print(events)
 
     def before_close_event(self):
         motion.cleanup()
@@ -70,11 +72,15 @@ class TabWidget(BaseWidget):
             label='Jog Tab'
         )
 
-        self._jog_tab.value = JogTab()
+        self._jog_tab.value = JogTab(self._update_function)
+
+        self._output_tab = ControlEmptyWidget()
+        self._output_tab.value = OutputTab(self._update_function)
 
         self.formset = [
             {
                 "Axis": ['_axis_tab'],
+                "Output": ['_output_tab'],
                 "Points": ['_points_tab'],
                 "Jog": ['_jog_tab']
             }

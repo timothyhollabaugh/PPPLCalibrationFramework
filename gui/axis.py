@@ -38,7 +38,8 @@ class AxisTab(BaseWidget):
         self._min = ControlNumber(
             label="Minimum",
             minimum=-float('inf'),
-            maximum=float('inf')
+            maximum=float('inf'),
+            decimals=5
         )
 
         self._min.changed_event = self._on_min_changed
@@ -47,7 +48,8 @@ class AxisTab(BaseWidget):
         self._max = ControlNumber(
             label="Maximum",
             minimum=-float('inf'),
-            maximum=float('inf')
+            maximum=float('inf'),
+            decimals=5
         )
 
         self._max.changed_event = self._on_max_changed

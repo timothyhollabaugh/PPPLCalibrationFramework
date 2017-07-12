@@ -128,6 +128,23 @@ class ControlAxis(ABC):
         """
         self._name = name
 
+class OutputDevice(ABC):
+    """
+    The thing that gets enabled when measuring
+    """
+
+    @abstractmethod
+    def set_enabled(self, enable=True):
+        """
+        Set the output to enabled or disabled
+        """
+        pass
+
+    def get_custom_config(self):
+        """
+        Get the GUI config for this output device
+        """
+        return None
 
 class Sensor(ABC):
 

@@ -54,7 +54,7 @@ class LinearAxis(ControlAxis):
                 label="Device"
             )
 
-            widget.device_list += ('', None)
+            widget.device_list += ('None', None)
 
             for device in DEVICES:
                 widget.device_list += device
@@ -145,7 +145,7 @@ class RotateAxis(ControlAxis):
                 label="Device"
             )
 
-            widget.device_list += ('', None)
+            widget.device_list += ('None', None)
 
             for device in DEVICES:
                 widget.device_list += device
@@ -160,6 +160,7 @@ class RotateAxis(ControlAxis):
                 default=0,
                 minimum=0,
                 maximum=float('inf'),
+                decimals=5
             )
 
             widget.distance_field.key_pressed_event = self._update_distance_to_surface
