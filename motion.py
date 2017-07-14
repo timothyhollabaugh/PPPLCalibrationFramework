@@ -94,13 +94,12 @@ class LinearAxis(ControlAxis):
     def _write_value(self, value):
         if self._linear_stage is not None:
             self._linear_stage.move_to(value)
-            print("Setting linear position to: {}".format(value))
 
     def get_current_value(self):
         if self._linear_stage is not None:
             return self._linear_stage.position
         else:
-            return 0
+            return self.get_value()
 
     def _update_homing(self):
         if self.is_done():
@@ -143,11 +142,11 @@ class RotateAxis(ControlAxis):
 
     def get_custom_config(self):
         """
-        Gets a pyforms BaseWidget to complete configuration for LinearAxis
+        Gets a pyforms BaseWidget to complete configuration for RotationAxis
         """
 
         if self._widget is None:
-            widget = BaseWidget("Linear Axis Config")
+            widget = BaseWidget("Rotate Axis Config")
 
             widget.device_list = ControlCombo(
                 label="Device"
@@ -165,7 +164,7 @@ class RotateAxis(ControlAxis):
 
             widget.distance_field = ControlNumber(
                 label="Distance to Surface",
-                default=0,
+                default=1,
                 minimum=0,
                 maximum=float('inf'),
                 decimals=5
@@ -203,7 +202,6 @@ class RotateAxis(ControlAxis):
     def _write_value(self, value):
         if self._rotation_stage is not None:
             self._rotation_stage.move_to(self._distance_to_angle(value))
-            print("Setting rotation position to: {}".format(value))
 
     def _distance_to_angle(self, distance):
         return (self._ticks_to_level
@@ -222,7 +220,7 @@ class RotateAxis(ControlAxis):
         if self._rotation_stage is not None:
             return self._angle_to_distance(self._rotation_stage.position)
         else:
-            return 0
+            return self.get_value()
 
     def _update_homing(self):
         if self.is_done():

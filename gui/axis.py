@@ -161,7 +161,8 @@ class AxisTab(BaseWidget):
         if not axis is None:
             self._axis_list += [axis.get_name()]
             self._axis += [axis]
-            self._update_shown_axis()
+            self._axis_list.tableWidget.selectRow(self._axis_list.rows_count - 1)
+            #self._update_shown_axis()
             self._send_events()
 
     def _on_selection_changed(self):

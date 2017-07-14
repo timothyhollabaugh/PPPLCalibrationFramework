@@ -101,7 +101,9 @@ def update_laser(_):
     power = WIDGET.power_supply.value
     signal = WIDGET.signal_generator.value
     channel = WIDGET.power_channel.value
-    if power is not None and power != '' and signal is not None and signal != '':
+    print(power)
+    print(signal)
+    if power is not None and power != 'None' and signal is not None and signal != 'None':
         print("Making Laser")
         power_resource = RESOURCE_MANAGER.open_resource(power)
         signal_resource = RESOURCE_MANAGER.open_resource(signal)

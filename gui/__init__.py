@@ -7,8 +7,11 @@ from pyforms.Controls import ControlEmptyWidget, ControlLabel
 from gui.axis import AxisTab
 from gui.jog import JogTab
 from gui.output import OutputTab
+from gui.points import PointsTab
+from gui.sensor import SensorTab
 from gui.canvas import Canvas
 import motion
+
 
 class ControllerWindow(BaseWidget):
     """
@@ -22,14 +25,16 @@ class ControllerWindow(BaseWidget):
         super().__init__("Calibration Controller")
 
         self._timer.timeout.connect(self._update_timer)
-        self._timer.start(100)
+        # self._timer.start(100)
 
         self._canvas = ControlEmptyWidget()
-        self._canvas.form.setSizePolicy(QSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding))
+        self._canvas.form.setSizePolicy(QSizePolicy(
+            QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding))
         self._canvas.value = Canvas()
 
         self._tabs = ControlEmptyWidget()
-        self._tabs.form.setSizePolicy(QSizePolicy(QSizePolicy.Fixed, QSizePolicy.MinimumExpanding))
+        self._tabs.form.setSizePolicy(QSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.MinimumExpanding))
         self._tabs.value = TabWidget(self._update_events)
 
         self.formset = [
@@ -45,11 +50,12 @@ class ControllerWindow(BaseWidget):
         'xaxis'
         'yaxis'
         'output'
+        'sensor'
         """
         self._update_functions += (event, function)
 
     def _update_events(self, events):
-        #print(events)
+        print(events)
         if isinstance(self._tabs.value, TabWidget):
             self._tabs.value.update_events(events)
 
@@ -61,6 +67,7 @@ class ControllerWindow(BaseWidget):
 
     def before_close_event(self):
         motion.cleanup()
+
 
 class TabWidget(BaseWidget):
     """
@@ -74,29 +81,26 @@ class TabWidget(BaseWidget):
 
         self._update_function = update_function
 
-        self._axis_tab = ControlEmptyWidget(
-            label='Axis Tab'
-        )
-
+        self._axis_tab = ControlEmptyWidget()
         self._axis_tab.value = AxisTab(self._update_function)
 
-        self._points_tab = ControlEmptyWidget(
-            label='Points Tab'
-        )
+        self._points_tab = ControlEmptyWidget()
+        self._points_tab.value = PointsTab(self._update_function)
 
-        self._jog_tab = ControlEmptyWidget(
-            label='Jog Tab'
-        )
-
+        self._jog_tab = ControlEmptyWidget()
         self._jog_tab.value = JogTab(self._update_function)
 
         self._output_tab = ControlEmptyWidget()
         self._output_tab.value = OutputTab(self._update_function)
 
+        self._sensor_tab = ControlEmptyWidget()
+        self._sensor_tab.value = SensorTab(self._update_function)
+
         self.formset = [
             {
                 "Axis": ['_axis_tab'],
                 "Output": ['_output_tab'],
+                "Sensor": ['_sensor_tab'],
                 "Points": ['_points_tab'],
                 "Jog": ['_jog_tab']
             }
@@ -108,6 +112,9 @@ class TabWidget(BaseWidget):
         """
         if isinstance(self._jog_tab.value, JogTab):
             self._jog_tab.value.update_events(events)
+
+        if isinstance(self._points_tab.value, PointsTab):
+            self._points_tab.value.update_events(events)
 
     def init_form(self):
         super().init_form()

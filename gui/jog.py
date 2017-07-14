@@ -1,18 +1,24 @@
 
-from PyQt5.QtWidgets import QSizePolicy, QGridLayout, QPushButton, QWidget, QVBoxLayout
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QSizePolicy, QGridLayout, QPushButton, QWidget, QVBoxLayout, QFrame
 from pyforms import BaseWidget
-from pyforms.Controls import ControlButton, ControlSlider, ControlEmptyWidget, ControlBase, ControlNumber, ControlCheckBox
+from pyforms.Controls import ControlButton, ControlSlider, ControlEmptyWidget, ControlBase, ControlNumber, ControlCheckBox, ControlLabel
 import qtawesome as qta
 from framework import ControlAxis, OutputDevice
+
 
 class JogTab(BaseWidget):
 
     _output = None
+    _timer = QTimer()
 
-    def __init__(self, update_function = None):
+    def __init__(self, update_function=None):
         super().__init__("Jog Tab")
 
         self._update_function = update_function
+
+        self._timer.timeout.connect(self._timer_update)
+        self._timer.start()
 
         self._xy_panel = ControlEmptyWidget()
         self._xy_panel.setSizePolicy(QSizePolicy(
@@ -60,6 +66,11 @@ class JogTab(BaseWidget):
 
         if 'output' in event:
             self._output = event['output']
+
+    def _timer_update(self):
+        if isinstance(self._aux_panel.value, list):
+            for aux_axis in self._aux_panel.value:
+                aux_axis.timer_update()
 
     def _send_events(self):
         if callable(self._update_function):
@@ -149,22 +160,18 @@ class ControlJog(ControlBase):
     def _up(self):
         if isinstance(self._yaxis, ControlAxis):
             self._yaxis.goto_value(self._yaxis.get_value() + self._step.value)
-        print("UP")
 
     def _down(self):
         if isinstance(self._yaxis, ControlAxis):
             self._yaxis.goto_value(self._yaxis.get_value() - self._step.value)
-        print("DOWN")
 
     def _left(self):
         if isinstance(self._xaxis, ControlAxis):
             self._xaxis.goto_value(self._xaxis.get_value() - self._step.value)
-        print("LEFT")
 
     def _right(self):
         if isinstance(self._xaxis, ControlAxis):
             self._xaxis.goto_value(self._xaxis.get_value() + self._step.value)
-        print("RIGHT")
 
     def _home(self):
         if isinstance(self._xaxis, ControlAxis):
@@ -187,6 +194,8 @@ class AuxJog(BaseWidget):
     A Widget to jog aux axis
     """
 
+    _updating = False
+
     def __init__(self, axis):
         super().__init__("Aux Jog")
 
@@ -201,10 +210,29 @@ class AuxJog(BaseWidget):
             maximum=axis.get_max(),
             decimals=5
         )
-
         self._value_field.changed_event = self._update_value
 
+        self._current_field = ControlLabel(
+            label="Current Value"
+        )
+
+        self.setFrameShape(QFrame.StyledPanel)
+
+        self.set_margin(10)
+
+        self.formset = [
+            '_value_field',
+            ("info:Current Value:", '', '', '_current_field')
+        ]
+
     def _update_value(self):
+        self._updating = True
         value = self._value_field.value
-        print(value)
         self._axis.goto_value(value)
+        self._updating = False
+
+    def timer_update(self):
+        if not self._updating and self._value_field.value != self._axis.get_value():
+            self._value_field.value = self._axis.get_value()
+
+        self._current_field.value = "{0:.5f}".format(self._axis.get_current_value())

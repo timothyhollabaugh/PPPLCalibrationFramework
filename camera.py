@@ -7,6 +7,9 @@ import ctypes
 from ctypes import *
 import time
 
+from pyforms import BaseWidget
+from pyforms.Controls import ControlNumber
+
 import cv2
 import numpy as np
 from qcamera import Camera
@@ -222,29 +225,43 @@ class CameraSensor(Sensor):
     The camera that looks at the laser
     """
 
-    _laser = None
-    _capture_time = 1
-    _frame_delay = 0.01
-
     _camera = None
     _start_time = 0
 
-    def __init__(self, laser, capture_time, frame_delay):
-        self._laser = laser
-        self._capture_time = capture_time
-        self._frame_delay = frame_delay
+    _widget = None
 
+    def __init__(self):
         self._camera = ThorlabsDCx()
-
         self._measuring = False
 
     def __del__(self):
         self._camera.close()
 
+    def get_custom_config(self):
+
+        widget = BaseWidget()
+            
+        widget.measure_time = ControlNumber(
+            label="Measure Time (s)",
+            default=1,
+            minimum=0,
+            maximum=float('inf'),
+            decimals=5
+        )
+
+        widget.frame_time = ControlNumber(
+            label="Frame Delay (s)",
+            default=0.05,
+            minimum=0,
+            maximum=float('inf'),
+            decimals=5
+        )
+
+        self._widget = widget
+
+        return self._widget
 
     def begin_measuring(self):
-        self._laser.set_enabled(True)
-        self._laser.set_enabled(True)
         self._camera.start()
         self._start_time = time.time()
         super().begin_measuring()
@@ -252,19 +269,17 @@ class CameraSensor(Sensor):
 
     def update(self):
         if self._measuring:
-            if time.time() - self._start_time < self._capture_time:
+            if time.time() - self._start_time < self._widget.measure_time.value:
                 print('.', end='', flush=True)
                 img = self._camera.acquire_image_data()
                 #cv2.imshow('source', img)
                 ret, img = cv2.threshold(img, 12, 255, cv2.THRESH_BINARY)
                 ret, contours, hier = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 cv2.drawContours(img, contours, -1, (255, 0, 0))
-                #cv2.imshow('threshhold', img)
+                cv2.imshow('threshhold', img)
 
 
             else:
                 print("\nStopping Measuring")
                 self._camera.stop()
-                self._laser.set_enabled(False)
-                self._laser.set_enabled(False)
                 self._measuring = False

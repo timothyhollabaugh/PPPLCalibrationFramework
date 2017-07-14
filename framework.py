@@ -2,12 +2,15 @@
 The framework for stepping and scanning axis and measuring the sensor values
 """
 
+import time
 from enum import Enum, auto
 from abc import ABC, abstractmethod
+from PyQt5.QtCore import QTimer
 from pyforms import BaseWidget
 from pyforms.Controls import ControlCombo, ControlLabel
 
 import cv2
+
 
 class AxisType(Enum):
     """
@@ -17,12 +20,15 @@ class AxisType(Enum):
     Y_Axis = "Y Axis"
     Auxiliary_Axis = "Aux Axis"
 
+
 class ControlAxis(ABC):
 
     """
     Controls a single axis used for calibration
     Must be subclassed for each actual axis being used
     """
+
+    points = None
 
     _value = 0
     _name = ""
@@ -33,6 +39,7 @@ class ControlAxis(ABC):
 
     def __init__(self, name):
         self._name = name
+        self.points = []
 
     @abstractmethod
     def _write_value(self, value):
@@ -128,6 +135,7 @@ class ControlAxis(ABC):
         """
         self._name = name
 
+
 class OutputDevice(ABC):
     """
     The thing that gets enabled when measuring
@@ -146,6 +154,7 @@ class OutputDevice(ABC):
         """
         return None
 
+
 class Sensor(ABC):
 
     """
@@ -153,6 +162,12 @@ class Sensor(ABC):
     """
 
     _measuring = False
+
+    def get_custom_config(self):
+        """
+        Get the GUI config for this output device
+        """
+        return None
 
     def update(self):
         """
@@ -177,14 +192,13 @@ class AxisControllerState(Enum):
     """
     The state for the AxisController
     """
-    START = auto()
-    START_WAIT = auto()
-    BEGIN_STEP = auto()
-    WAIT_STEP = auto()
-    NEXT_AXIS = auto()
-    BEGIN_MEASURING = auto()
-    WAIT_MEASURING = auto()
-    DONE = auto()
+    BEGIN_STEP = 'beginstep'
+    WAIT_STEP = 'waitstep'
+    BEGIN_MEASURING = 'beginsensor'
+    WAIT_MEASURING = 'waitsensor'
+    BEGIN_DELAY = 'begindelay'
+    WAIT_DELAY = 'waitdelay'
+    DONE = 'done'
 
 
 class AxisController:
@@ -192,108 +206,98 @@ class AxisController:
     Controls many ControlAxis to scan a grid
     """
 
-    _control_axis = []
+    _axis = []
     _sensor = None
+    _output = None
 
-    _current_axis_index = 0
-    _state = AxisControllerState.START
+    _state = AxisControllerState.BEGIN_STEP
 
     _step_delay = 0
+    _start_delay = 0
 
-    def __init__(self, control_axis, sensor, step_delay):
+    _step = 0
+    _timer = QTimer()
+
+    def __init__(self, control_axis, sensor, output, step_delay):
         """
         Creates a new Axis Controller with a list of ControlAxis to control
         :param control_axis: a list of ControlAxis in the order that they should be controlled
         """
 
-        self._control_axis = control_axis
+        self._axis = control_axis
         self._sensor = sensor
+        self._output = output
         self._step_delay = step_delay
 
-    def scan(self):
+    def begin(self):
+        """
+        Starts scanning
+        """
+        self._step = 0
+        self._state = AxisControllerState.BEGIN_STEP
+        self._timer.timeout.connect(self._scan)
+        self._timer.start()
+
+    def _scan(self):
         """
         Scans through all of the axis given in the constructor in order
         :return: Nothing
         """
 
-        for axis in self._control_axis:
+        print("Scanning: ", self._step, self._state.value)
+
+        for axis in self._axis:
             axis.update()
 
         self._sensor.update()
 
-        # Start
-        if self._state == AxisControllerState.START:
-            for axis in self._control_axis:
-                axis.goto_step(0)
-
-            self._state = AxisControllerState.START_WAIT
-
-        # Start Wait
-        elif self._state == AxisControllerState.START_WAIT:
+        # Begin Step
+        if self._state == AxisControllerState.BEGIN_STEP:
             done = True
-            for axis in self._control_axis:
-                if not axis.is_done():
+            for axis in self._axis:
+                if len(axis.points) > self._step:
+                    axis.goto_value(axis.points[self._step])
                     done = False
 
             if done:
-                self._state = AxisControllerState.BEGIN_MEASURING
-
-        # Begin Step
-        elif self._state == AxisControllerState.BEGIN_STEP:
-            axis = self._control_axis[self._current_axis_index]
-
-            print("Stepping Axis {}".format(type(axis).__name__))
-
-            next_step = axis.get_step() + 1
-
-            if next_step < axis.get_steps():
-                print("Axis Stepped")
-                axis.goto_step(next_step)
-                self._current_axis_index = 0
-                self._state = AxisControllerState.WAIT_STEP
+                self._state = AxisControllerState.DONE
             else:
-                print("Axis did not step")
-                axis.goto_step(0)
-                self._state = AxisControllerState.NEXT_AXIS
+                self._state = AxisControllerState.WAIT_STEP
 
         # Wait Step
         elif self._state == AxisControllerState.WAIT_STEP:
             done = True
-            for axis in self._control_axis:
+            for axis in self._axis:
                 if not axis.is_done():
                     done = False
 
             if done:
                 self._state = AxisControllerState.BEGIN_MEASURING
 
-        # Next Axis
-        elif self._state == AxisControllerState.NEXT_AXIS:
-            next_index = self._current_axis_index + 1
-
-            #print("Current index {0}, next index {1}".format(self._current_axis_index, next_index))
-
-            if next_index < len(self._control_axis):
-                #print("Moving to next axis")
-                self._current_axis_index = next_index
-                self._state = AxisControllerState.BEGIN_STEP
-            else:
-                print("Done Scanning")
-                return True
-
         # Begin Measuring
         elif self._state == AxisControllerState.BEGIN_MEASURING:
+            self._output.set_enabled(True)
             self._sensor.begin_measuring()
             self._state = AxisControllerState.WAIT_MEASURING
 
         # Wait Measuring
         elif self._state == AxisControllerState.WAIT_MEASURING:
             if self._sensor.is_done():
+                self._state = AxisControllerState.BEGIN_DELAY
+                self._output.set_enabled(False)
+
+        # Begin Delay
+        elif self._state == AxisControllerState.BEGIN_DELAY:
+            self._start_delay = time.time()
+            self._state = AxisControllerState.WAIT_DELAY
+
+        # Wait Delay
+        elif self._state == AxisControllerState.WAIT_DELAY:
+            if time.time() - self._start_delay > self._step_delay:
+                self._step += 1
                 self._state = AxisControllerState.BEGIN_STEP
 
         elif self._state == AxisControllerState.DONE:
-            for axis in self._control_axis:
-                axis.reset()
+            self._timer.stop()
 
         cv2.waitKey(1)
-
-        return False
