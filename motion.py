@@ -102,6 +102,7 @@ class LinearAxis(ControlAxis):
             return self.get_value()
 
     def _update_homing(self):
+        print("Linear home")
         if self.is_done():
             self._write_value(self._value)
             self._homing_timer.stop()
@@ -223,6 +224,7 @@ class RotateAxis(ControlAxis):
             return self.get_value()
 
     def _update_homing(self):
+        print("Rotate home")
         if self.is_done():
             self._write_value(self._value)
             self._homing_timer.stop()

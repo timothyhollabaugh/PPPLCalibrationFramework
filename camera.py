@@ -10,7 +10,7 @@ import time
 from PyQt5.QtCore import QTimer
 
 from pyforms import BaseWidget
-from pyforms.Controls import ControlNumber, ControlPlayer, ControlDockWidget, ControlBase, ControlButton, ControlLabel
+from pyforms.Controls import ControlNumber, ControlPlayer, ControlDockWidget, ControlBase, ControlButton, ControlLabel, ControlSlider
 from pyforms.gui.Controls.ControlPlayer.VideoGLWidget import VideoGLWidget
 
 import cv2
@@ -33,9 +33,18 @@ class CameraSensor(Sensor):
 
     _timer = QTimer()
 
+    _frame = 0
+
+    _power = 0
+    _frequency = 0
+    _xpos = 0
+    _ypos = 0
+
+    _freq_start = 0
+    _last_on = False
+
     def __init__(self):
         self._camera = ThorlabsDCx()
-        self._camera.start()
         self._measuring = False
 
         self._widget = BaseWidget()
@@ -56,6 +65,27 @@ class CameraSensor(Sensor):
             decimals=5
         )
 
+        self._widget.threshold = ControlSlider(
+            label="Threshold",
+            default=18,
+            min=0,
+            max=255
+        )
+
+        self._widget.min_size = ControlSlider(
+            label="Minimum Size",
+            default=50,
+            min=0,
+            max=200,
+        )
+
+        self._widget.sample_radius = ControlSlider(
+            label="Sample Radius",
+            default=17,
+            min=0,
+            max=200
+        )
+
         self._widget.show_button = ControlButton(
             label="Show Camera"
         )
@@ -71,14 +101,16 @@ class CameraSensor(Sensor):
 
     def _show_camera(self):
         print("Showing Camera")
+        self._camera.start()
         if not isinstance(self._camera_window, CameraWindow):
             self._camera_window = CameraWindow()
             self._camera_window.before_close_event = self._hide_camera
         self._camera_window.show()
-        self._timer.start()
+        self._timer.start(1000 / 60)
 
     def _hide_camera(self):
         print("Hiding Camera")
+        self._camera.stop()
         if isinstance(self._camera_window, CameraWindow):
             self._camera_window.hide()
         self._camera_window = None
@@ -87,36 +119,65 @@ class CameraSensor(Sensor):
     def _get_frame(self):
         img = self._camera.acquire_image_data()
 
-        ret, img = cv2.threshold(img, 12, 255, cv2.THRESH_BINARY)
-        ret, contours, hier = cv2.findContours(
-            img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(img, contours, -1, (255, 0, 0))
+        ret, thres = cv2.threshold(
+            img, self._widget.threshold.value, 255, cv2.THRESH_BINARY)
+        _, contours, _ = cv2.findContours(
+            thres, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
+
+        valid_countors = 0
+        for contour in contours:
+            x, y, w, h = cv2.boundingRect(contour)
+            if w < self._widget.min_size.value or w < self._widget.min_size.value:
+                continue
+            valid_countors += 1
+            cv2.rectangle(img, (x, y), (x + w, y + h), (255, 255, 0))
+
+            # Position Calculation
+            self._xpos = x + w / 2
+            self._ypos = y + h / 2
+
+            # Power Calculation
+            mask = np.zeros(img.shape, np.uint8)
+            cv2.circle(mask, (int(self._xpos), int(self._ypos)),
+                       self._widget.sample_radius.value, (255, 255, 255), thickness=-1)
+            self._power = cv2.mean(img, mask)[0]
+
+        # Draw power circle
+        cv2.circle(img, (int(self._xpos), int(self._ypos)),
+                   self._widget.sample_radius.value, (255, 255, 255), thickness=1)
+
+        # Frequency Calculation
+        on = valid_countors > 0
+        if on:
+            if not self._last_on:
+                delta_time = time.time() - self._freq_start
+                self._frequency = 1 / delta_time
+                self._freq_start = time.time()
+        self._last_on = on
+
+        cv2.putText(img, "Position: ({0}, {1})".format(self._xpos, self._ypos), (5, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
+        cv2.putText(img, "Power: {0}".format(self._power), (5, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
+        cv2.putText(img, "Frequency: {0}".format(self._frequency), (5, 90),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
+
+        #cv2imwrite("{}.jpeg".format(self._frame), img)
+        self._frame += 1
 
         if self._camera_window is not None:
             self._camera_window.update_frame(img)
-    
+
     def begin_measuring(self):
-        self._camera.start()
+        self._power = 0
+        self._show_camera()
         self._start_time = time.time()
-        super().begin_measuring()
-        print("Beginning Measurement")
 
     def update(self):
-        if self._measuring:
-            if time.time() - self._start_time < self._widget.measure_time.value:
-                print('.', end='', flush=True)
-                img = self._camera.acquire_image_data()
-                #cv2.imshow('source', img)
-                ret, img = cv2.threshold(img, 12, 255, cv2.THRESH_BINARY)
-                ret, contours, hier = cv2.findContours(
-                    img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                cv2.drawContours(img, contours, -1, (255, 0, 0))
-                cv2.imshow('threshhold', img)
+        return [self._xpos, self._ypos, self._power, self._frequency]
 
-            else:
-                print("\nStopping Measuring")
-                self._camera.stop()
-                self._measuring = False
+    def is_done(self):
+        return time.time() - self._start_time > self._widget.measure_time.value
 
 
 class CameraWindow(BaseWidget):

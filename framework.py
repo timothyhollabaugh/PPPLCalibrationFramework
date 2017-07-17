@@ -3,6 +3,7 @@ The framework for stepping and scanning axis and measuring the sensor values
 """
 
 import time
+import csv
 from enum import Enum, auto
 from abc import ABC, abstractmethod
 from PyQt5.QtCore import QTimer
@@ -167,8 +168,6 @@ class Sensor(ABC):
     The thing that is being calibrated
     """
 
-    _measuring = False
-
     def get_custom_config(self):
         """
         Get the GUI config for this output device
@@ -179,19 +178,26 @@ class Sensor(ABC):
         """
         Gets called repeatedly while scanning
         """
-        self._measuring = False
+        pass
 
     def begin_measuring(self):
         """
         Begin measuring during update()
         """
-        self._measuring = True
+        pass
 
     def is_done(self):
         """
         Returns whether the sensor is done measuring
         """
-        return not self._measuring
+        return True
+
+    def get_data(self):
+        """
+        Returns the measured data as a tuple
+        """
+        return ()
+
 
 class AxisControllerState(Enum):
     """
@@ -199,10 +205,12 @@ class AxisControllerState(Enum):
     """
     BEGIN_STEP = 'beginstep'
     WAIT_STEP = 'waitstep'
-    BEGIN_MEASURING = 'beginsensor'
-    WAIT_MEASURING = 'waitsensor'
-    BEGIN_DELAY = 'begindelay'
-    WAIT_DELAY = 'waitdelay'
+    BEGIN_ENABLE = 'beginsensor'
+    WAIT_ENABLE = 'waitsensor'
+    BEGIN_PRE_DELAY = 'beginpredelay'
+    WAIT_PRE_DELAY = 'waitpredelay'
+    BEGIN_POST_DELAY = 'beginpostdelay'
+    WAIT_POST_DELAY = 'waitpostdelay'
     DONE = 'done'
 
 
@@ -217,13 +225,20 @@ class AxisController:
 
     _state = AxisControllerState.BEGIN_STEP
 
-    _step_delay = 0
+    _pre_delay = 0
+    _post_delay = 0
     _start_delay = 0
+
+    _data = []
+
+    _measuring = False
+
+    _outfile = None
 
     _step = 0
     _timer = QTimer()
 
-    def __init__(self, control_axis, sensor, output, step_delay):
+    def __init__(self, control_axis, sensor, output, pre_delay, post_delay, outfile=None):
         """
         Creates a new Axis Controller with a list of ControlAxis to control
         :param control_axis: a list of ControlAxis in the order that they should be controlled
@@ -232,12 +247,15 @@ class AxisController:
         self._axis = control_axis
         self._sensor = sensor
         self._output = output
-        self._step_delay = step_delay
+        self._pre_delay = pre_delay
+        self._post_delay = post_delay
+        self._outfile = outfile
 
     def begin(self):
         """
         Starts scanning
         """
+        self._output.set_enabled(False)
         self._step = 0
         self._state = AxisControllerState.BEGIN_STEP
         self._timer.timeout.connect(self._scan)
@@ -249,15 +267,23 @@ class AxisController:
         :return: Nothing
         """
 
-        print("Scanning: ", self._step, self._state.value)
+        if (self._state == AxisControllerState.BEGIN_PRE_DELAY
+                or self._state == AxisControllerState.WAIT_PRE_DELAY
+                or self._state == AxisControllerState.BEGIN_ENABLE
+                or self._state == AxisControllerState.WAIT_ENABLE
+                or self._state == AxisControllerState.BEGIN_POST_DELAY
+                or self._state == AxisControllerState.WAIT_POST_DELAY):
+            datarow = []
+            for axis in self._axis:
+                datarow.append(axis.get_current_value())
 
-        for axis in self._axis:
-            axis.update()
+            datarow += self._sensor.update()
 
-        self._sensor.update()
+            self._data.append(datarow)
 
         # Begin Step
         if self._state == AxisControllerState.BEGIN_STEP:
+            print("Moving to step:", self._step)
             done = True
             for axis in self._axis:
                 if len(axis.points) > self._step:
@@ -271,38 +297,67 @@ class AxisController:
 
         # Wait Step
         elif self._state == AxisControllerState.WAIT_STEP:
+            print('.', end='')
             done = True
             for axis in self._axis:
                 if not axis.is_done():
                     done = False
 
             if done:
-                self._state = AxisControllerState.BEGIN_MEASURING
+                print()
+                self._state = AxisControllerState.BEGIN_PRE_DELAY
+
+        # Begin Pre Delay
+        elif self._state == AxisControllerState.BEGIN_PRE_DELAY:
+            print("Pre Delay")
+            self._start_delay = time.time()
+            self._state = AxisControllerState.WAIT_PRE_DELAY
+
+        # Wait Pre Delay
+        elif self._state == AxisControllerState.WAIT_PRE_DELAY:
+            print('.', end='')
+            if time.time() - self._start_delay > self._pre_delay:
+                print()
+                self._state = AxisControllerState.BEGIN_ENABLE
 
         # Begin Measuring
-        elif self._state == AxisControllerState.BEGIN_MEASURING:
+        elif self._state == AxisControllerState.BEGIN_ENABLE:
+            print("Taking measurement")
             self._output.set_enabled(True)
             self._sensor.begin_measuring()
-            self._state = AxisControllerState.WAIT_MEASURING
+            self._state = AxisControllerState.WAIT_ENABLE
 
         # Wait Measuring
-        elif self._state == AxisControllerState.WAIT_MEASURING:
+        elif self._state == AxisControllerState.WAIT_ENABLE:
+            print('.', end='')
+
             if self._sensor.is_done():
-                self._state = AxisControllerState.BEGIN_DELAY
+                print()
+
+                self._state = AxisControllerState.BEGIN_POST_DELAY
                 self._output.set_enabled(False)
 
-        # Begin Delay
-        elif self._state == AxisControllerState.BEGIN_DELAY:
+        # Begin Post Delay
+        elif self._state == AxisControllerState.BEGIN_POST_DELAY:
+            print("Post Delay")
             self._start_delay = time.time()
-            self._state = AxisControllerState.WAIT_DELAY
+            self._state = AxisControllerState.WAIT_POST_DELAY
 
-        # Wait Delay
-        elif self._state == AxisControllerState.WAIT_DELAY:
-            if time.time() - self._start_delay > self._step_delay:
+        # Wait Post Delay
+        elif self._state == AxisControllerState.WAIT_POST_DELAY:
+            print('.', end='')
+            if time.time() - self._start_delay > self._post_delay:
+                print()
                 self._step += 1
                 self._state = AxisControllerState.BEGIN_STEP
 
         elif self._state == AxisControllerState.DONE:
-            self._timer.stop()
+            print("Done.")
 
-        cv2.waitKey(1)
+            if self._outfile is not None and self._outfile is not '':
+                with open(self._outfile, 'w', newline='') as csvfile:
+                    csvwriter = csv.writer(csvfile, delimiter=' ',
+                                           quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                    csvwriter.writerows(self._data)
+
+            self._timer.stop()
