@@ -7,14 +7,154 @@ import ctypes
 from ctypes import *
 import time
 
+from PyQt5.QtCore import QTimer
+
 from pyforms import BaseWidget
-from pyforms.Controls import ControlNumber
+from pyforms.Controls import ControlNumber, ControlPlayer, ControlDockWidget, ControlBase, ControlButton, ControlLabel
+from pyforms.gui.Controls.ControlPlayer.VideoGLWidget import VideoGLWidget
 
 import cv2
 import numpy as np
 from qcamera import Camera
 
 from framework import Sensor
+
+
+class CameraSensor(Sensor):
+    """
+    The camera that looks at the laser
+    """
+
+    _camera = None
+    _start_time = 0
+
+    _widget = None
+    _camera_window = None
+
+    _timer = QTimer()
+
+    def __init__(self):
+        self._camera = ThorlabsDCx()
+        self._camera.start()
+        self._measuring = False
+
+        self._widget = BaseWidget()
+
+        self._widget.measure_time = ControlNumber(
+            label="Measure Time (s)",
+            default=1,
+            minimum=0,
+            maximum=float('inf'),
+            decimals=5
+        )
+
+        self._widget.frame_time = ControlNumber(
+            label="Frame Delay (s)",
+            default=0.05,
+            minimum=0,
+            maximum=float('inf'),
+            decimals=5
+        )
+
+        self._widget.show_button = ControlButton(
+            label="Show Camera"
+        )
+        self._widget.show_button.value = self._show_camera
+
+        self._timer.timeout.connect(self._get_frame)
+
+    def __del__(self):
+        self._camera.close()
+
+    def get_custom_config(self):
+        return self._widget
+
+    def _show_camera(self):
+        print("Showing Camera")
+        if not isinstance(self._camera_window, CameraWindow):
+            self._camera_window = CameraWindow()
+            self._camera_window.before_close_event = self._hide_camera
+        self._camera_window.show()
+        self._timer.start()
+
+    def _hide_camera(self):
+        print("Hiding Camera")
+        if isinstance(self._camera_window, CameraWindow):
+            self._camera_window.hide()
+        self._camera_window = None
+        self._timer.stop()
+
+    def _get_frame(self):
+        img = self._camera.acquire_image_data()
+
+        ret, img = cv2.threshold(img, 12, 255, cv2.THRESH_BINARY)
+        ret, contours, hier = cv2.findContours(
+            img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(img, contours, -1, (255, 0, 0))
+
+        if self._camera_window is not None:
+            self._camera_window.update_frame(img)
+    
+    def begin_measuring(self):
+        self._camera.start()
+        self._start_time = time.time()
+        super().begin_measuring()
+        print("Beginning Measurement")
+
+    def update(self):
+        if self._measuring:
+            if time.time() - self._start_time < self._widget.measure_time.value:
+                print('.', end='', flush=True)
+                img = self._camera.acquire_image_data()
+                #cv2.imshow('source', img)
+                ret, img = cv2.threshold(img, 12, 255, cv2.THRESH_BINARY)
+                ret, contours, hier = cv2.findContours(
+                    img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                cv2.drawContours(img, contours, -1, (255, 0, 0))
+                cv2.imshow('threshhold', img)
+
+            else:
+                print("\nStopping Measuring")
+                self._camera.stop()
+                self._measuring = False
+
+
+class CameraWindow(BaseWidget):
+
+    def __init__(self):
+        super().__init__("Thorlabs Camera")
+
+        print("MAking window")
+
+        self._camera = CameraPlayer()
+        self.formset = [
+            "Camera",
+            '_camera'
+        ]
+
+    def update_frame(self, frame):
+        self._camera.update_frame(frame)
+
+
+class CameraPlayer(ControlBase):
+    """
+    Displays some numpy arrarys as a camera feed
+    """
+
+    def init_form(self):
+        self._form = VideoGLWidget()
+
+    def update_frame(self, frame):
+        """
+        Update the frame displayed
+        """
+        if isinstance(frame, list):
+            self._form.paint(frame)
+        else:
+            self._form.paint([frame])
+
+
+# Stuff for Thorlabs camera
 
 def _chk(msg):
     """Check for errors from the C library."""
@@ -35,7 +175,8 @@ def _chk(msg):
         if msg == 1:
             raise RuntimeError("Invalid camera handle.")
         if msg == -1:
-            raise RuntimeError("General error message: Likely the camera was disconnected!")
+            raise RuntimeError(
+                "General error message: Likely the camera was disconnected!")
         print(
             "Unhandled error number: {}. \
             See DCx_User_and_SDK_Manual.pdf for details".format(msg))
@@ -49,7 +190,7 @@ class ImageFileParams(ctypes.Structure):
         ("nQuality", c_uint),
         ("ppcImageMem;", c_void_p),
         ("pnImageID", c_uint),
-        ("reserved", c_byte*32)
+        ("reserved", c_byte * 32)
     ]
 
 
@@ -64,10 +205,10 @@ class IS_RECT(ctypes.Structure):
 
 class CamInfo(ctypes.Structure):
     _fields_ = [
-        ("SerNo", ctypes.c_char*12),
-        ("ID", ctypes.c_char*20),
-        ("Version", ctypes.c_char*10),
-        ("Date", ctypes.c_char*12),
+        ("SerNo", ctypes.c_char * 12),
+        ("ID", ctypes.c_char * 20),
+        ("Version", ctypes.c_char * 10),
+        ("Date", ctypes.c_char * 12),
         ("Select", ctypes.c_byte),
         ("Type", ctypes.c_byte),
         ("Reserved", ctypes.c_char)
@@ -76,6 +217,7 @@ class CamInfo(ctypes.Structure):
 
 class ThorlabsDCx(Camera):
     """Class for Thorlabs DCx series cameras."""
+
     def initialize(self, **kwargs):
         """Initialize the camera."""
         # Load the library.
@@ -151,8 +293,8 @@ class ThorlabsDCx(Camera):
 
         """
         # Allocate memory for image:
-        img_size = self.shape[0]*self.shape[1]/self.bins**2
-        c_array = ctypes.c_char*int(img_size)
+        img_size = self.shape[0] * self.shape[1] / self.bins**2
+        c_array = ctypes.c_char * int(img_size)
         c_img = c_array()
 
         # Take one picture: wait time is waittime * 10 ms:
@@ -205,7 +347,7 @@ class ThorlabsDCx(Camera):
     def get_roi(self):
         """Define the region of interest."""
         rectAOI = IS_RECT()
-        _chk(self.clib.is_AOI(self.filehandle, 2, pointer(rectAOI), 4*4))
+        _chk(self.clib.is_AOI(self.filehandle, 2, pointer(rectAOI), 4 * 4))
         return rectAOI
 
     def save_image(self):
@@ -219,67 +361,3 @@ class ThorlabsDCx(Camera):
 
     def get_parameters(self):
         _chk(self.clib.is_ParameterSet(self.filehandle, 4, "file.ini", None))
-
-class CameraSensor(Sensor):
-    """
-    The camera that looks at the laser
-    """
-
-    _camera = None
-    _start_time = 0
-
-    _widget = None
-
-    def __init__(self):
-        self._camera = ThorlabsDCx()
-        self._measuring = False
-
-    def __del__(self):
-        self._camera.close()
-
-    def get_custom_config(self):
-
-        widget = BaseWidget()
-            
-        widget.measure_time = ControlNumber(
-            label="Measure Time (s)",
-            default=1,
-            minimum=0,
-            maximum=float('inf'),
-            decimals=5
-        )
-
-        widget.frame_time = ControlNumber(
-            label="Frame Delay (s)",
-            default=0.05,
-            minimum=0,
-            maximum=float('inf'),
-            decimals=5
-        )
-
-        self._widget = widget
-
-        return self._widget
-
-    def begin_measuring(self):
-        self._camera.start()
-        self._start_time = time.time()
-        super().begin_measuring()
-        print("Beginning Measurement")
-
-    def update(self):
-        if self._measuring:
-            if time.time() - self._start_time < self._widget.measure_time.value:
-                print('.', end='', flush=True)
-                img = self._camera.acquire_image_data()
-                #cv2.imshow('source', img)
-                ret, img = cv2.threshold(img, 12, 255, cv2.THRESH_BINARY)
-                ret, contours, hier = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                cv2.drawContours(img, contours, -1, (255, 0, 0))
-                cv2.imshow('threshhold', img)
-
-
-            else:
-                print("\nStopping Measuring")
-                self._camera.stop()
-                self._measuring = False

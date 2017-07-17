@@ -1,6 +1,6 @@
 
 from pyforms import BaseWidget
-from pyforms.Controls import ControlList, ControlNumber, ControlButton
+from pyforms.Controls import ControlList, ControlNumber, ControlButton, ControlCombo, ControlEmptyWidget
 from camera import CameraSensor
 from framework import ControlAxis, AxisController
 
@@ -82,7 +82,6 @@ class PointsTab(BaseWidget):
         return max_len
 
     def _add_point(self):
-        self.print_axis()
         for axis in self._axis:
             assert isinstance(axis, ControlAxis)
             axis.points.append(0.0)
@@ -105,5 +104,6 @@ class PointsTab(BaseWidget):
             print(axis.get_name(), axis.points)
 
     def _begin_scan(self):
-        self._controller = AxisController(self._axis, self._sensor, self._output, self._delay_time.value)
+        self._controller = AxisController(
+            self._axis, self._sensor, self._output, self._delay_time.value)
         self._controller.begin()

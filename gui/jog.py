@@ -72,6 +72,9 @@ class JogTab(BaseWidget):
             for aux_axis in self._aux_panel.value:
                 aux_axis.timer_update()
 
+        if isinstance(self._output, OutputDevice):
+            self._enable_output.value = self._output.get_enabled()
+
     def _send_events(self):
         if callable(self._update_function):
             self._update_function({'output_enable': self._enable_output.value})

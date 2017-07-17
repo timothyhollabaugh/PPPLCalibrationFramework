@@ -124,9 +124,10 @@ class Laser:
     disabled_voltage = 0
     max_current = 0.5
 
-    off_signal = -0.7
+    low_signal = -0.1
+    high_signal = 1.0
 
-    offset = off_signal
+    power = 1.0
     frequency = 1
     enabled = False
 
@@ -162,7 +163,7 @@ class Laser:
 
     def __del__(self):
         self.enabled = False
-        self.offset = self.off_signal
+        self.offset = self.low_signal
         self.update_laser()
         self.power_resource.close()
         self.signal_resource.close()
@@ -173,11 +174,17 @@ class Laser:
         """
         print("Updating Laser")
         if self.enabled:
-            print(self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
-                self.frequency, 1.1, self.offset)))
+            # print(self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
+            #    self.frequency, 1.1, self.offset)))
+            amplitude = self.power * (1 - self.low_signal) / 2
+            offset = amplitude / 2 + self.low_signal
+            self.signal_resource.write(
+                "SOURCE1:APPLY:SINUSOID {0}HZ,{1},{2}".format(self.frequency, amplitude, offset))
         else:
-            print(self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
-                self.frequency, 1.1, self.off_signal)))
+            # print(self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
+            #    self.frequency, 1.1, self.off_signal)))
+            self.signal_resource.write(
+                "SOURCE1:APPLY:DC DEFAULT,DEFAULT,{0}".format(self.low_signal))
 
     def set_enabled(self, enable=True):
         """
@@ -189,6 +196,12 @@ class Laser:
         time.sleep(0.1)
         self.update_laser()
 
+    def get_enabled(self):
+        """
+        Gets if the laser is enabled
+        """
+        return self.enabled
+
     def set_frequency(self, frequency):
         """
         Sets the frequency to pulse the laser at
@@ -198,14 +211,26 @@ class Laser:
         self.frequency = frequency
         self.update_laser()
 
+    def get_frequency(self):
+        """
+        Get the frequency
+        """
+        return self.frequency
+
     def set_power(self, power):
         """
         Sets the power to the laser by adjusting the amplitude and DC offset of the signal
         :param power: The power to apply between 0.0 and 1.0
         :return: nothing
         """
-        self.offset = power * -self.off_signal + self.off_signal
+        self.power = power
         self.update_laser()
+
+    def get_power(self):
+        """
+        Get the power
+        """
+        return self.power
 
     def get_signal_generator(self):
         """
@@ -227,6 +252,13 @@ class LaserOutput(OutputDevice):
 
     def get_custom_config(self):
         return laser_custom_config()
+
+    def get_enabled(self):
+        global LASER
+        if isinstance(LASER, Laser):
+            return LASER.get_enabled()
+        else:
+            return False
 
     def set_enabled(self, enable=True):
         global LASER

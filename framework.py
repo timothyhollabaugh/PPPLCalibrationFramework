@@ -148,6 +148,12 @@ class OutputDevice(ABC):
         """
         pass
 
+    def get_enabled(self):
+        """
+        Get enabled
+        """
+        return False
+
     def get_custom_config(self):
         """
         Get the GUI config for this output device
@@ -186,7 +192,6 @@ class Sensor(ABC):
         Returns whether the sensor is done measuring
         """
         return not self._measuring
-
 
 class AxisControllerState(Enum):
     """

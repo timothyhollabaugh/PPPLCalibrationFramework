@@ -19,13 +19,9 @@ class ControllerWindow(BaseWidget):
     """
 
     _update_functions = []
-    _timer = QTimer()
 
     def __init__(self):
         super().__init__("Calibration Controller")
-
-        self._timer.timeout.connect(self._update_timer)
-        # self._timer.start(100)
 
         self._canvas = ControlEmptyWidget()
         self._canvas.form.setSizePolicy(QSizePolicy(
@@ -40,6 +36,7 @@ class ControllerWindow(BaseWidget):
         self.formset = [
             ('_tabs', '_canvas')
         ]
+        self.has_progress = True
 
     def add_update_function(self, event, function):
         """
@@ -61,9 +58,6 @@ class ControllerWindow(BaseWidget):
 
         if isinstance(self._canvas.value, Canvas):
             self._canvas.value.update_events(events)
-
-    def _update_timer(self):
-        self._update_events({'timer': time.time()})
 
     def before_close_event(self):
         motion.cleanup()
@@ -112,7 +106,6 @@ class TabWidget(BaseWidget):
         """
         if isinstance(self._jog_tab.value, JogTab):
             self._jog_tab.value.update_events(events)
-
         if isinstance(self._points_tab.value, PointsTab):
             self._points_tab.value.update_events(events)
 
