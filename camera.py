@@ -185,8 +185,6 @@ class CameraWindow(BaseWidget):
     def __init__(self):
         super().__init__("Thorlabs Camera")
 
-        print("MAking window")
-
         self._camera = CameraPlayer()
         self.formset = [
             "Camera",

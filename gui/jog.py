@@ -183,8 +183,6 @@ class ControlJog(ControlBase):
         if isinstance(self._yaxis, ControlAxis):
             self._yaxis.goto_home()
 
-        print("HOME")
-
     def load_form(self, data, path=None):
         pass
 

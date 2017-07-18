@@ -84,7 +84,6 @@ class LinearAxis(ControlAxis):
     def _update_stage(self, _):
         device = self._widget.device_list.value
         if device is not None and device != 'None':
-            print("Update:", device)
             self._linear_stage = thorlabs_apt.Motor(device)
             self._linear_stage.identify()
             self._value = self.get_current_value()

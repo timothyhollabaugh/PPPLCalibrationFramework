@@ -30,10 +30,8 @@ class SensorTab(BaseWidget):
             self._device_select.add_item(class_type.__name__, class_type)
 
     def _on_device_change(self):
-        print("Change")
         device = self._device_select.value
         if callable(device):
-            print("Subclass")
             self._sensor = device()
             self._custom.value = self._sensor.get_custom_config()
         else:

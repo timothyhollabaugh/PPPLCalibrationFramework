@@ -52,7 +52,6 @@ class ControllerWindow(BaseWidget):
         self._update_functions += (event, function)
 
     def _update_events(self, events):
-        print(events)
         if isinstance(self._tabs.value, TabWidget):
             self._tabs.value.update_events(events)
 

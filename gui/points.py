@@ -2,7 +2,6 @@
 import csv
 from pyforms import BaseWidget
 from pyforms.Controls import ControlList, ControlNumber, ControlButton, ControlCombo, ControlEmptyWidget, ControlFile, ControlText
-from camera import CameraSensor
 from framework import ControlAxis, AxisController
 
 
@@ -127,7 +126,7 @@ class PointsTab(BaseWidget):
         self._controller.begin()
 
     def _on_open_file(self):
-        print("File:", self._open_file.value)
+        print("Opening File:", self._open_file.value)
 
         if self._open_file.value is not None and self._open_file.value != '':
 

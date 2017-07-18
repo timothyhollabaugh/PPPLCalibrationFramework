@@ -139,7 +139,6 @@ class Laser:
         :param signal_resource: The pyvisa resource for the laser signal generator (Must be an AFG-3021 for now)
         """
 
-        print("Initing Laser")
         print("Signal Generator:", signal_resource.query('*IDN?'))
         print("Power Supply:", power_resource.query('*IDN?'))
 
@@ -172,7 +171,6 @@ class Laser:
         """
         Updates the laser to current power, frequency, and enabled
         """
-        print("Updating Laser")
         if self.enabled:
             # print(self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
             #    self.frequency, 1.1, self.offset)))

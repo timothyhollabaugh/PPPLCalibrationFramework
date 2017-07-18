@@ -33,16 +33,13 @@ class OutputTab(BaseWidget):
 
 
     def _on_device_change(self):
-        print("Change")
         device = self._device_select.value
         if callable(device):
-            print("Subclass")
             self._output = device()
             self._custom.value = self._output.get_custom_config()
         else:
             self._output = None
             self._custom.value = None
-            print("Not Subclass")
 
         if callable(self._update_function):
             self._update_function({'output': self._output})

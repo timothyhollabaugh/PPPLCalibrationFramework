@@ -1,9 +1,10 @@
+"""
+GUI for configuring Axis to control
+"""
 
 from pyforms import BaseWidget
-from pyforms.Controls import ControlList, ControlLabel, ControlCombo, ControlEmptyWidget, ControlButton, ControlText, ControlCheckBox, ControlNumber
-from framework import ControlAxis, AxisType
-from motion import LinearAxis, ControlAxis
-from laser import LaserFequencyAxis, LaserPowerAxis
+from pyforms.Controls import ControlList, ControlLabel, ControlCombo, ControlEmptyWidget, ControlButton, ControlText, ControlNumber
+from framework import ControlAxis
 
 
 class AxisTab(BaseWidget):
@@ -126,7 +127,6 @@ class AxisTab(BaseWidget):
             self._special_axis.value = None
             self._axis_custom.value = None
 
-
     def _send_events(self):
         if self._update_function is not None:
             self._update_function(
@@ -137,7 +137,6 @@ class AxisTab(BaseWidget):
         win.show()
 
     def _on_remove_axis(self):
-        print("REMOVING")
         index = self._axis_list.selected_row_index
         if not index is None:
             axis = self._axis[index]
@@ -151,7 +150,7 @@ class AxisTab(BaseWidget):
                     self._xaxis = None
                 if axis == self._yaxis:
                     self._yaxis = None
-            
+
             self._send_events()
 
     def add_axis(self, axis):
@@ -161,15 +160,15 @@ class AxisTab(BaseWidget):
         if not axis is None:
             self._axis_list += [axis.get_name()]
             self._axis += [axis]
-            self._axis_list.tableWidget.selectRow(self._axis_list.rows_count - 1)
-            #self._update_shown_axis()
+            self._axis_list.tableWidget.selectRow(
+                self._axis_list.rows_count - 1)
+            # self._update_shown_axis()
             self._send_events()
 
     def _on_selection_changed(self):
         self._update_shown_axis()
 
     def _on_data_changed(self, row, _, item):
-        print("Data changed")
         if row < len(self._axis):
             axis = self._axis[row]
             if not axis is None:
@@ -196,6 +195,7 @@ class AxisTab(BaseWidget):
                 if axis.get_max() != self._max.value:
                     axis.set_max(self._max.value)
                     self._send_events()
+
 
 class NewAxisWindow(BaseWidget):
     """
