@@ -95,6 +95,7 @@ class CameraSensor(Sensor):
 
     def __del__(self):
         self._camera.close()
+        self._timer.stop()
 
     def get_custom_config(self):
         return self._widget

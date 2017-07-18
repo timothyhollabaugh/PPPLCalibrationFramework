@@ -273,7 +273,7 @@ class AxisController:
                 or self._state == AxisControllerState.WAIT_ENABLE
                 or self._state == AxisControllerState.BEGIN_POST_DELAY
                 or self._state == AxisControllerState.WAIT_POST_DELAY):
-            datarow = []
+            datarow = [time.time()]
             for axis in self._axis:
                 datarow.append(axis.get_current_value())
 
@@ -356,8 +356,7 @@ class AxisController:
 
             if self._outfile is not None and self._outfile is not '':
                 with open(self._outfile, 'w', newline='') as csvfile:
-                    csvwriter = csv.writer(csvfile, delimiter=' ',
-                                           quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                    csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
                     csvwriter.writerows(self._data)
 
             self._timer.stop()
