@@ -48,6 +48,10 @@ WIDGET = None
 
 
 def laser_custom_config():
+    """
+    Get the GUI config to configure the laser
+    The GUI is the same for each laser axis and for the laser output
+    """
     global WIDGET
 
     if WIDGET is None:
@@ -96,6 +100,10 @@ def laser_custom_config():
 
 
 def update_laser(_):
+    """
+    Update the current laser with the power supply and signal generator
+    from the GUI
+    """
     global LASER
     global WIDGET
     power = WIDGET.power_supply.value
@@ -103,6 +111,7 @@ def update_laser(_):
     channel = WIDGET.power_channel.value
     print(power)
     print(signal)
+    # Only update if both are selected
     if power is not None and power != 'None' and signal is not None and signal != 'None':
         print("Making Laser")
         power_resource = RESOURCE_MANAGER.open_resource(power)
@@ -131,7 +140,7 @@ class Laser:
     frequency = 1
     enabled = False
 
-    def __init__(self, power_resource, power_channel, signal_resource, update_function=None):
+    def __init__(self, power_resource, power_channel, signal_resource):
         """
         Create a Laser
         :param power_resource: The pyvisa resource for the laser power supply (Must be a GPD-4303S for now)
@@ -172,15 +181,11 @@ class Laser:
         Updates the laser to current power, frequency, and enabled
         """
         if self.enabled:
-            # print(self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
-            #    self.frequency, 1.1, self.offset)))
             amplitude = self.power * (1 - self.low_signal) / 2
             offset = amplitude / 2 + self.low_signal
             self.signal_resource.write(
-                "SOURCE1:APPLY:SINUSOID {0}HZ,{1},{2}".format(self.frequency, amplitude, offset))
+                "SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(self.frequency, amplitude, offset))
         else:
-            # print(self.signal_resource.write("SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(
-            #    self.frequency, 1.1, self.off_signal)))
             self.signal_resource.write(
                 "SOURCE1:APPLY:DC DEFAULT,DEFAULT,{0}".format(self.low_signal))
 

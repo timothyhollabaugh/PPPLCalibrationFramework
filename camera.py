@@ -4,7 +4,6 @@ Camera for the DCC1545M
 
 import sys
 import ctypes
-from ctypes import *
 import time
 
 from PyQt5.QtCore import QTimer
@@ -16,13 +15,14 @@ from pyforms.gui.Controls.ControlPlayer.VideoGLWidget import VideoGLWidget
 import cv2
 import numpy as np
 from qcamera import Camera
-
 from framework import Sensor
 
 
 class CameraSensor(Sensor):
     """
     The camera that looks at the laser
+    Uses a Thorlabs DCC1545M
+    Attempts to measure position, power, and frequency, with mixed accuracy
     """
 
     _camera = None
@@ -47,6 +47,7 @@ class CameraSensor(Sensor):
         self._camera = ThorlabsDCx()
         self._measuring = False
 
+        # Begin making the GUI shown when this sensor is selected
         self._widget = BaseWidget()
 
         self._widget.measure_time = ControlNumber(
@@ -101,6 +102,9 @@ class CameraSensor(Sensor):
         return self._widget
 
     def _show_camera(self):
+        """
+        Shows the camera window
+        """
         print("Showing Camera")
         self._camera.start()
         if not isinstance(self._camera_window, CameraWindow):
@@ -110,6 +114,9 @@ class CameraSensor(Sensor):
         self._timer.start(1000 / 60)
 
     def _hide_camera(self):
+        """
+        Hides the camera window
+        """
         print("Hiding Camera")
         self._camera.stop()
         if isinstance(self._camera_window, CameraWindow):
@@ -118,6 +125,10 @@ class CameraSensor(Sensor):
         self._timer.stop()
 
     def _get_frame(self):
+        """
+        Get a frame from the camera and process it for position, power, and frequency,
+        then put those values on the frame
+        """
         img = self._camera.acquire_image_data()
 
         ret, thres = cv2.threshold(
@@ -156,6 +167,7 @@ class CameraSensor(Sensor):
                 self._freq_start = time.time()
         self._last_on = on
 
+        # Put the measured values in the upper left of the frame
         cv2.putText(img, "Position: ({0}, {1})".format(self._xpos, self._ypos), (5, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
         cv2.putText(img, "Power: {0}".format(self._power), (5, 60),
@@ -166,6 +178,7 @@ class CameraSensor(Sensor):
         #cv2imwrite("{}.jpeg".format(self._frame), img)
         self._frame += 1
 
+        # Update the GUI with the new frame
         if self._camera_window is not None:
             self._camera_window.update_frame(img)
 
@@ -182,6 +195,9 @@ class CameraSensor(Sensor):
 
 
 class CameraWindow(BaseWidget):
+    """
+    Show a window with a CameraPlayer to view a camera
+    """
 
     def __init__(self):
         super().__init__("Thorlabs Camera")
@@ -193,6 +209,9 @@ class CameraWindow(BaseWidget):
         ]
 
     def update_frame(self, frame):
+        """
+        Update the shown image with a new frame
+        """
         self._camera.update_frame(frame)
 
 
@@ -215,6 +234,7 @@ class CameraPlayer(ControlBase):
 
 
 # Stuff for Thorlabs camera
+# From qcamera, but modified for video rather than still images
 
 def _chk(msg):
     """Check for errors from the C library."""
@@ -245,21 +265,21 @@ def _chk(msg):
 # Structures used by the ctypes code:
 class ImageFileParams(ctypes.Structure):
     _fields_ = [
-        ("pwchFileName", c_wchar_p),
-        ("nFileType", c_uint),
-        ("nQuality", c_uint),
-        ("ppcImageMem;", c_void_p),
-        ("pnImageID", c_uint),
-        ("reserved", c_byte * 32)
+        ("pwchFileName", ctypes.c_wchar_p),
+        ("nFileType", ctypes.c_uint),
+        ("nQuality", ctypes.c_uint),
+        ("ppcImageMem;", ctypes.c_void_p),
+        ("pnImageID", ctypes.c_uint),
+        ("reserved", ctypes.c_byte * 32)
     ]
 
 
 class IS_RECT(ctypes.Structure):
     _fields_ = [
-        ("s32x", c_int),
-        ("s32y", c_int),
-        ("s32Width", c_int),
-        ("s32Height", c_int)
+        ("s32x", ctypes.c_int),
+        ("s32y", ctypes.c_int),
+        ("s32Width", ctypes.c_int),
+        ("s32Height", ctypes.c_int)
     ]
 
 
@@ -295,7 +315,7 @@ class ThorlabsDCx(Camera):
         # multiple cameras installed, but it's good enough for a lot
         # of cases.
         number_of_cameras = ctypes.c_int(0)
-        _chk(self.clib.is_GetNumberOfCameras(byref(number_of_cameras)))
+        _chk(self.clib.is_GetNumberOfCameras(ctypes.byref(number_of_cameras)))
         if number_of_cameras.value < 1:
             raise RuntimeError("No camera detected!")
         self.filehandle = ctypes.c_int(0)
@@ -321,7 +341,7 @@ class ThorlabsDCx(Camera):
         bitdepth = 8  # Camera is 8 bit.
         _chk(self.clib.is_AllocImageMem(
             self.filehandle, self.shape[0], self.shape[1], bitdepth,
-            byref(self.ppcImgMem),  byref(self.pid)))
+            ctypes.byref(self.ppcImgMem),  ctypes.byref(self.pid)))
 
         # Tell the driver to use the newly allocated memory:
         _chk(self.clib.is_SetImageMem(
@@ -336,10 +356,10 @@ class ThorlabsDCx(Camera):
         _chk(self.clib.is_ExitCamera(self.filehandle))
 
     def start(self):
-        _chk(self.clib.is_CaptureVideo(self.filehandle, c_int(100)))
+        _chk(self.clib.is_CaptureVideo(self.filehandle, ctypes.c_int(100)))
 
     def stop(self):
-        _chk(self.clib.is_StopLiveVideo(self.filehandle, c_int(1)))
+        _chk(self.clib.is_StopLiveVideo(self.filehandle, ctypes.c_int(1)))
 
     def set_acquisition_mode(self, mode):
         """Set the image acquisition mode."""
@@ -393,10 +413,10 @@ class ThorlabsDCx(Camera):
         """Set the exposure time."""
         IS_EXPOSURE_CMD_SET_EXPOSURE = 12
         nCommand = IS_EXPOSURE_CMD_SET_EXPOSURE
-        Param = c_double(t)
+        Param = ctypes.c_double(t)
         SizeOfParam = 8
         _chk(self.clib.is_Exposure(
-            self.filehandle, nCommand, byref(Param), SizeOfParam))
+            self.filehandle, nCommand, ctypes.byref(Param), SizeOfParam))
 
     def get_gain(self):
         """Query the current gain settings."""
@@ -407,17 +427,17 @@ class ThorlabsDCx(Camera):
     def get_roi(self):
         """Define the region of interest."""
         rectAOI = IS_RECT()
-        _chk(self.clib.is_AOI(self.filehandle, 2, pointer(rectAOI), 4 * 4))
+        _chk(self.clib.is_AOI(self.filehandle, 2, ctypes.pointer(rectAOI), 4 * 4))
         return rectAOI
 
     def save_image(self):
-        size = sizeof(ImageFileParams)
+        size = ctypes.sizeof(ImageFileParams)
         params = ImageFileParams()
         params.nQuality = 0
         params.pwchFileName = u"mypic.bmp"
         params.ppcImageMem = None
         print("size", size)
-        _chk(self.clib.is_ImageFile(self.filehandle, 2, pointer(params), size))
+        _chk(self.clib.is_ImageFile(self.filehandle, 2, ctypes.pointer(params), size))
 
     def get_parameters(self):
         _chk(self.clib.is_ParameterSet(self.filehandle, 4, "file.ini", None))

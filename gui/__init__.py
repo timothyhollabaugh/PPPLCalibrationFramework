@@ -1,4 +1,6 @@
-
+"""
+GUI code
+"""
 import time
 from PyQt5.QtWidgets import QSizePolicy
 from PyQt5.QtCore import QTimer
@@ -15,22 +17,23 @@ import motion
 
 class ControllerWindow(BaseWidget):
     """
-    A window to list the controllers
+    The main window of the application
     """
-
-    _update_functions = []
 
     def __init__(self):
         super().__init__("Calibration Controller")
 
+        # Create a spot for the canvas to show the points and location
         self._canvas = ControlEmptyWidget()
         self._canvas.form.setSizePolicy(QSizePolicy(
             QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding))
         self._canvas.value = Canvas()
 
+        # Create a spot for the tabs with configuration
         self._tabs = ControlEmptyWidget()
         self._tabs.form.setSizePolicy(QSizePolicy(
             QSizePolicy.Fixed, QSizePolicy.MinimumExpanding))
+        # Create a tabs widget and give it the _update_events(event) function to call whenever there is an event
         self._tabs.value = TabWidget(self._update_events)
 
         self.formset = [
@@ -38,20 +41,18 @@ class ControllerWindow(BaseWidget):
         ]
         self.has_progress = True
 
-    def add_update_function(self, event, function):
-        """
-        Add a function to be called when event 'event' happens
-        Current events:
-        'timer'
-        'axis'
-        'xaxis'
-        'yaxis'
-        'output'
-        'sensor'
-        """
-        self._update_functions += (event, function)
 
     def _update_events(self, events):
+        """
+        Update the events fired by other classes
+        Current events:
+        'axis': Whenever the list of axis changes. Carries the list of axis
+        'xaxis': Whenever the X axis changes. Carries the current X axis
+        'yaxis': Whenever the Y axis changes. Carries the current Y axis
+        'output': Whenever the output device changes. Carries the current output
+        'sensor': Whenever the sensor changes. Carries the current sensor
+        """
+        # Distribute the events to the Canvas and Tabs
         if isinstance(self._tabs.value, TabWidget):
             self._tabs.value.update_events(events)
 
@@ -59,6 +60,9 @@ class ControllerWindow(BaseWidget):
             self._canvas.value.update_events(events)
 
     def before_close_event(self):
+        """
+        Cleanup the Thorlabs stages before closing
+        """
         motion.cleanup()
 
 
@@ -89,6 +93,8 @@ class TabWidget(BaseWidget):
         self._sensor_tab = ControlEmptyWidget()
         self._sensor_tab.value = SensorTab(self._update_function)
 
+        # Define that the Controls should be shown as tabs. 
+        # See pyforms docs for details
         self.formset = [
             {
                 "Axis": ['_axis_tab'],
@@ -107,6 +113,3 @@ class TabWidget(BaseWidget):
             self._jog_tab.value.update_events(events)
         if isinstance(self._points_tab.value, PointsTab):
             self._points_tab.value.update_events(events)
-
-    def init_form(self):
-        super().init_form()

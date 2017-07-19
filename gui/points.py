@@ -1,7 +1,7 @@
 
 import csv
 from pyforms import BaseWidget
-from pyforms.Controls import ControlList, ControlNumber, ControlButton, ControlCombo, ControlEmptyWidget, ControlFile, ControlText
+from pyforms.Controls import ControlList, ControlNumber, ControlButton, ControlEmptyWidget, ControlFile, ControlText
 from framework import ControlAxis, AxisController
 
 
@@ -66,6 +66,8 @@ class PointsTab(BaseWidget):
         """
         Updates all events
         """
+
+        # Update the points with the most recent axis
         if 'axis' in events:
             self._axis = events['axis']
             self._points_list.clear()
@@ -91,6 +93,9 @@ class PointsTab(BaseWidget):
             self._output = events['output']
 
     def _max_axis_len(self):
+        """
+        Get the number of points in the axis that has the most points
+        """
         max_len = 0
         for axis in self._axis:
             assert isinstance(axis, ControlAxis)
@@ -116,16 +121,19 @@ class PointsTab(BaseWidget):
         if len(self._axis) > col and len(self._axis[col].points) > row:
             self._axis[col].points[row] = item
 
-    def print_axis(self):
-        for axis in self._axis:
-            print(axis.get_name(), axis.points)
-
     def _begin_scan(self):
+        """
+        Create an AxisController and begin scanning
+        """
         self._controller = AxisController(
-            self._axis, self._sensor, self._output, self._pre_delay_time.value, self._post_delay_time.value, self._out_file.value)
+            self._axis, self._sensor, self._output, self._pre_delay_time.value,
+            self._post_delay_time.value, self._out_file.value)
         self._controller.begin()
 
     def _on_open_file(self):
+        """
+        Open a csv file and read it into the points lists
+        """
         print("Opening File:", self._open_file.value)
 
         if self._open_file.value is not None and self._open_file.value != '':
@@ -146,4 +154,5 @@ class PointsTab(BaseWidget):
                             axis = self._axis[index]
                             if isinstance(axis, ControlAxis):
                                 axis.points.append(data)
-                                self._points_list.set_value(index, len(axis.points) - 1, data)
+                                self._points_list.set_value(
+                                    index, len(axis.points) - 1, data)

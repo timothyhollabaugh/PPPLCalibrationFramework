@@ -26,7 +26,18 @@ class ControlAxis(ABC):
 
     """
     Controls a single axis used for calibration
+
+    An Axis is anything that gets changed while scanning.
+    For example, The X/Y Axis of an area, the power of the laser, etc
+
+    Each Axis has a list of points it goes to
+    There should be the same number of points in every axis
+
     Must be subclassed for each actual axis being used
+    Any subclasses that are imported into main.py will show up in the drop downs
+
+    The _write_value(self, value) method must be overrided in the subclass to actually move the axis
+    Everything else can be overrided if needed
     """
 
     points = None
@@ -42,6 +53,7 @@ class ControlAxis(ABC):
         self._name = name
         self.points = []
 
+    # This method must be overrided in subclasses
     @abstractmethod
     def _write_value(self, value):
         """
@@ -50,6 +62,7 @@ class ControlAxis(ABC):
         """
         pass
 
+    # These can be overrided if needed
     def update(self):
         """
         Gets called very quickly repeatedly while scanning
@@ -58,7 +71,7 @@ class ControlAxis(ABC):
 
     def is_done(self):
         """
-        Returns whether the axis is done moving
+        Returns whether the axis is done moving. Also gets called quickely while scanning
         """
         return True
 
@@ -68,6 +81,13 @@ class ControlAxis(ABC):
         """
         return None
 
+    def goto_home(self):
+        """
+        Homes the axis to go to the endstop
+        """
+        self.goto_value(0)
+
+    # These methods should not be overrided unless absolutly required
     def set_min(self, min_value):
         """
         Sets the min value
@@ -106,7 +126,7 @@ class ControlAxis(ABC):
 
     def goto_value(self, value):
         """
-        Gots to a specified value, regardless of what the step is
+        Gots to a specified value, clipping to the min and max
         Returns if successful
         """
         if value < self._min:
@@ -117,12 +137,6 @@ class ControlAxis(ABC):
 
         self._value = value
         return self._write_value(self._value)
-
-    def goto_home(self):
-        """
-        Homes the axis to go to the endstop
-        """
-        self.goto_value(0)
 
     def get_name(self):
         """
@@ -140,6 +154,8 @@ class ControlAxis(ABC):
 class OutputDevice(ABC):
     """
     The thing that gets enabled when measuring
+
+    This class must be subclassed for each output device
     """
 
     @abstractmethod
@@ -166,6 +182,8 @@ class Sensor(ABC):
 
     """
     The thing that is being calibrated
+    
+    This must be subclasses for each sensor
     """
 
     def get_custom_config(self):
@@ -194,9 +212,9 @@ class Sensor(ABC):
 
     def get_data(self):
         """
-        Returns the measured data as a tuple
+        Returns the measured data as a list
         """
-        return ()
+        return []
 
 
 class AxisControllerState(Enum):

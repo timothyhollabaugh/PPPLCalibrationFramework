@@ -30,6 +30,9 @@ print(DEVICES)
 
 
 def cleanup():
+    """
+    Cleanup open comms to stages
+    """
     thorlabs_apt.core._cleanup()
 
 
@@ -100,22 +103,25 @@ class LinearAxis(ControlAxis):
         else:
             return self.get_value()
 
-    def _update_homing(self):
-        print("Linear home")
-        if self.is_done():
-            self._write_value(self._value)
-            self._homing_timer.stop()
-            self._homing_timer = None
-
     def goto_home(self):
         self._value = 0
 
         if self._linear_stage is not None:
             self._linear_stage.move_home()
 
+            # Start a timer to monitor the homing
+            # This makes sure that we go to the right place after homeing
+            # if the user has changed to set value
             self._homing_timer = QTimer()
             self._homing_timer.timeout.connect(self._update_homing)
             self._homing_timer.start(500)
+
+    def _update_homing(self):
+        print("Linear home")
+        if self.is_done():
+            self._write_value(self._value)
+            self._homing_timer.stop()
+            self._homing_timer = None
 
     def is_done(self):
         """
@@ -164,7 +170,7 @@ class RotateAxis(ControlAxis):
 
             widget.distance_field = ControlNumber(
                 label="Distance to Surface",
-                default=1,
+                default=self._distance_to_surface,
                 minimum=0,
                 maximum=float('inf'),
                 decimals=5
@@ -204,12 +210,20 @@ class RotateAxis(ControlAxis):
             self._rotation_stage.move_to(self._distance_to_angle(value))
 
     def _distance_to_angle(self, distance):
+        """
+        Do math to convert a position on the surface to an angle that
+        the stage should be pointed at
+        """
         return (self._ticks_to_level
                 + math.atan(distance / self._distance_to_surface)
                 * self._ticks_per_revolution
                 / (2 * math.pi))
 
     def _angle_to_distance(self, angle):
+        """
+        Do math to convert an angle the stage is pointed at
+        to the position on the surface
+        """
         return (self._distance_to_surface\
                 * math.tan(
                     (angle - self._ticks_to_level)
@@ -222,21 +236,24 @@ class RotateAxis(ControlAxis):
         else:
             return self.get_value()
 
+    def goto_home(self):
+        self._value = 0
+        if self._rotation_stage is not None:
+            self._rotation_stage.move_home()
+
+            # Start a timer to monitor the homing
+            # This ensures that once homeing is done,
+            # the stages moves to its set value
+            self._homing_timer = QTimer()
+            self._homing_timer.timeout.connect(self._update_homing)
+            self._homing_timer.start(500)
+
     def _update_homing(self):
         print("Rotate home")
         if self.is_done():
             self._write_value(self._value)
             self._homing_timer.stop()
             self._homing_timer = None
-
-    def goto_home(self):
-        self._value = 0
-        if self._rotation_stage is not None:
-            self._rotation_stage.move_home()
-
-            self._homing_timer = QTimer()
-            self._homing_timer.timeout.connect(self._update_homing)
-            self._homing_timer.start(500)
 
     def is_done(self):
         """
