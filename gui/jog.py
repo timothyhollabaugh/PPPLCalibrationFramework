@@ -4,12 +4,12 @@ from PyQt5.QtWidgets import QSizePolicy, QGridLayout, QPushButton, QWidget, QVBo
 from pyforms import BaseWidget
 from pyforms.Controls import ControlButton, ControlSlider, ControlEmptyWidget, ControlBase, ControlNumber, ControlCheckBox, ControlLabel
 import qtawesome as qta
-from framework import ControlAxis, OutputDevice
+from framework import ControlAxis, LightSource
 
 
 class JogTab(BaseWidget):
 
-    _output = None
+    _lightsource = None
     _timer = QTimer()
 
     def __init__(self, update_function=None):
@@ -32,14 +32,14 @@ class JogTab(BaseWidget):
         self._space = ControlEmptyWidget()
 
         self._enable_button = ControlButton(
-            label='Enable Output'
+            label='Enable LightSource'
         )
-        self._enable_button.value = self._enable_output
+        self._enable_button.value = self._enable_lightsource
 
         self._disable_button = ControlButton(
-            label='Disable Output'
+            label='Disable LightSource'
         )
-        self._disable_button.value = self._disable_output
+        self._disable_button.value = self._disable_lightsource
 
         self.formset = [
             '_xy_panel',
@@ -68,8 +68,8 @@ class JogTab(BaseWidget):
                     aux_axis.append(AuxJog(axis))
             self._aux_panel.value = aux_axis
 
-        if 'output' in event:
-            self._output = event['output']
+        if 'lightsource' in event:
+            self._lightsource = event['lightsource']
 
     def _timer_update(self):
         if isinstance(self._aux_panel.value, list):
@@ -78,15 +78,15 @@ class JogTab(BaseWidget):
 
     def _send_events(self):
         if callable(self._update_function):
-            self._update_function({'output_enable': self._enable_output.value})
+            self._update_function({'lightsource_enable': self._enable_lightsource.value})
 
-    def _enable_output(self):
-        if isinstance(self._output, OutputDevice):
-            self._output.set_enabled(True)
+    def _enable_lightsource(self):
+        if isinstance(self._lightsource, LightSource):
+            self._lightsource.set_enabled(True)
 
-    def _disable_output(self):
-        if isinstance(self._output, OutputDevice):
-            self._output.set_enabled(False)
+    def _disable_lightsource(self):
+        if isinstance(self._lightsource, LightSource):
+            self._lightsource.set_enabled(False)
 
 
 class ControlJog(ControlBase):

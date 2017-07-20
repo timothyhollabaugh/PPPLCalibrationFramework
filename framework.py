@@ -151,17 +151,17 @@ class ControlAxis(ABC):
         self._name = name
 
 
-class OutputDevice(ABC):
+class LightSource(ABC):
     """
     The thing that gets enabled when measuring
 
-    This class must be subclassed for each output device
+    This class must be subclassed for each lightsource device
     """
 
     @abstractmethod
     def set_enabled(self, enable=True):
         """
-        Set the output to enabled or disabled
+        Set the lightsource to enabled or disabled
         """
         pass
 
@@ -173,7 +173,7 @@ class OutputDevice(ABC):
 
     def get_custom_config(self):
         """
-        Get the GUI config for this output device
+        Get the GUI config for this lightsource device
         """
         return None
 
@@ -188,7 +188,7 @@ class Sensor:
 
     def get_custom_config(self):
         """
-        Get the GUI config for this output device
+        Get the GUI config for this lightsource device
         """
         return None
 
@@ -246,7 +246,7 @@ class AxisController:
 
     _axis = []
     _sensor = None
-    _output = None
+    _lightsource = None
 
     _state = AxisControllerState.DONE
 
@@ -266,7 +266,7 @@ class AxisController:
     _total_steps = 0
     _timer = QTimer()
 
-    def __init__(self, control_axis, sensor, output, pre_delay, post_delay, outfile=None, update_function=None):
+    def __init__(self, control_axis, sensor, lightsource, pre_delay, post_delay, outfile=None, update_function=None):
         """
         Creates a new Axis Controller with a list of ControlAxis to control
         :param control_axis: a list of ControlAxis in the order that they should be controlled
@@ -274,7 +274,7 @@ class AxisController:
 
         self._axis = control_axis
         self._sensor = sensor
-        self._output = output
+        self._lightsource = lightsource
         self._pre_delay = pre_delay
         self._post_delay = post_delay
         self._outfile = outfile
@@ -284,7 +284,7 @@ class AxisController:
         """
         Starts scanning
         """
-        self._output.set_enabled(False)
+        self._lightsource.set_enabled(False)
         self._step = 0
         self._total_steps = len(self._axis[0].points)
         self._data = [['Time'] + [axis.get_name()
@@ -299,7 +299,7 @@ class AxisController:
         """
         self._timer.stop()
         self._set_state(AxisControllerState.DONE)
-        self._output.set_enabled(False)
+        self._lightsource.set_enabled(False)
 
     def get_state(self):
         """
@@ -331,7 +331,7 @@ class AxisController:
 
             datarow += self._sensor.update()
 
-            datarow += [1.0] if self._output.get_enabled() else [0.0]
+            datarow += [1.0] if self._lightsource.get_enabled() else [0.0]
 
             self._data.append(datarow)
 
@@ -377,7 +377,7 @@ class AxisController:
         # Begin Measuring
         elif self._state == AxisControllerState.BEGIN_ENABLE:
             print("Taking measurement")
-            self._output.set_enabled(True)
+            self._lightsource.set_enabled(True)
             self._sensor.begin_measuring()
             self._set_state(AxisControllerState.WAIT_ENABLE)
 
@@ -389,7 +389,7 @@ class AxisController:
                 print()
 
                 self._set_state(AxisControllerState.BEGIN_POST_DELAY)
-                self._output.set_enabled(False)
+                self._lightsource.set_enabled(False)
 
         # Begin Post Delay
         elif self._state == AxisControllerState.BEGIN_POST_DELAY:

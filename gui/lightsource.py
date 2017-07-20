@@ -1,24 +1,24 @@
 
 from pyforms import BaseWidget
 from pyforms.Controls import ControlCombo, ControlEmptyWidget
-from framework import OutputDevice
+from framework import LightSource
 
 
-class OutputTab(BaseWidget):
+class LightSourceTab(BaseWidget):
     """
-    Tab to select the output device
+    Tab to select the lightsource device
     """
 
-    _output = None
+    _lightsource = None
     _update_function = None
 
     def __init__(self, update_function=None):
-        super().__init__("Output Tab")
+        super().__init__("Light Source Tab")
 
         self._update_function = update_function
 
         self._device_select = ControlCombo(
-            label="Output Device"
+            label="Light Source"
         )
 
         self._custom = ControlEmptyWidget()
@@ -27,17 +27,17 @@ class OutputTab(BaseWidget):
 
         self._device_select.add_item('None', None)
 
-        for class_type in OutputDevice.__subclasses__():
+        for class_type in LightSource.__subclasses__():
             self._device_select.add_item(class_type.__name__, class_type)
 
     def _on_device_change(self):
         device = self._device_select.value
         if callable(device):
-            self._output = device()
-            self._custom.value = self._output.get_custom_config()
+            self._lightsource = device()
+            self._custom.value = self._lightsource.get_custom_config()
         else:
-            self._output = None
+            self._lightsource = None
             self._custom.value = None
 
         if callable(self._update_function):
-            self._update_function({'output': self._output})
+            self._update_function({'lightsource': self._lightsource})

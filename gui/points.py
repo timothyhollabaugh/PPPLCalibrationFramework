@@ -16,7 +16,7 @@ class PointsTab(BaseWidget):
 
     _controller = None
     _sensor = None
-    _output = None
+    _lightsource = None
 
     def __init__(self, update_function=None):
         super().__init__("Points")
@@ -75,8 +75,8 @@ class PointsTab(BaseWidget):
         if 'sensor' in events:
             self._sensor = events['sensor']
 
-        if 'output' in events:
-            self._output = events['output']
+        if 'lightsource' in events:
+            self._lightsource = events['lightsource']
 
         if 'scan' in events:
             state = events['scan'][0]
@@ -138,7 +138,7 @@ class PointsTab(BaseWidget):
         """
         if self._controller is None or self._controller.get_state() == AxisControllerState.DONE:
             self._controller = AxisController(
-                self._axis, self._sensor, self._output, self._pre_delay_time.value,
+                self._axis, self._sensor, self._lightsource, self._pre_delay_time.value,
                 self._post_delay_time.value, self._out_file.value, self._update_function)
             self._controller.begin()
         else:

@@ -8,7 +8,7 @@ from pyforms import BaseWidget
 from pyforms.Controls import ControlEmptyWidget, ControlLabel, ControlProgress
 from gui.axis import AxisTab
 from gui.jog import JogTab
-from gui.output import OutputTab
+from gui.lightsource import LightSourceTab
 from gui.points import PointsTab
 from gui.sensor import SensorTab
 from gui.canvas import Canvas
@@ -57,7 +57,7 @@ class ControllerWindow(BaseWidget):
         'axis': Whenever the list of axis changes. Carries the list of axis
         'xaxis': Whenever the X axis changes. Carries the current X axis
         'yaxis': Whenever the Y axis changes. Carries the current Y axis
-        'output': Whenever the output device changes. Carries the current output
+        'lightsource': Whenever the lightsource device changes. Carries the current lightsource
         'sensor': Whenever the sensor changes. Carries the current sensor
         'scan': Whenever the scan state changes. Carries tuple of (AxisControllerState, step)
         'close': Whenever the main window is closed. Carries None
@@ -103,8 +103,8 @@ class TabWidget(BaseWidget):
         self._jog_tab = ControlEmptyWidget()
         self._jog_tab.value = JogTab(self._update_function)
 
-        self._output_tab = ControlEmptyWidget()
-        self._output_tab.value = OutputTab(self._update_function)
+        self._lightsource_tab = ControlEmptyWidget()
+        self._lightsource_tab.value = LightSourceTab(self._update_function)
 
         self._sensor_tab = ControlEmptyWidget()
         self._sensor_tab.value = SensorTab(self._update_function)
@@ -114,7 +114,7 @@ class TabWidget(BaseWidget):
         self.formset = [
             {
                 "Axis": ['_axis_tab'],
-                "Output": ['_output_tab'],
+                "Light Source": ['_lightsource_tab'],
                 "Sensor": ['_sensor_tab'],
                 "Points": ['_points_tab'],
                 "Jog": ['_jog_tab']

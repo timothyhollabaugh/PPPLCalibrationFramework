@@ -6,7 +6,7 @@ import visa
 from visa import VisaIOError
 from pyforms import BaseWidget
 from pyforms.Controls import ControlNumber, ControlCombo
-from framework import ControlAxis, OutputDevice
+from framework import ControlAxis, LightSource
 
 RESOURCE_MANAGER = visa.ResourceManager()
 
@@ -50,7 +50,7 @@ WIDGET = None
 def laser_custom_config():
     """
     Get the GUI config to configure the laser
-    The GUI is the same for each laser axis and for the laser output
+    The GUI is the same for each laser axis and for the laser lightsource
     """
     global WIDGET
 
@@ -145,11 +145,11 @@ class Laser:
     disabled_voltage = 0
     max_current = 0.5
 
-    low_signal = -0.1
+    low_signal = -0.2
     high_signal = 1.0
 
-    power = 1.0
-    frequency = 1
+    power = 0.0
+    frequency = 0.0
     enabled = False
 
     def __init__(self, power_resource, power_channel, signal_resource):
@@ -193,10 +193,16 @@ class Laser:
         Updates the laser to current power, frequency, and enabled
         """
         if self.enabled:
-            amplitude = self.power * (1 - self.low_signal) / 2
-            offset = amplitude / 2 + self.low_signal
-            self.signal_resource.write(
-                "SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(self.frequency, amplitude, offset))
+            if self.frequency > 0:
+                amplitude = self.power * (self.high_signal - self.low_signal) / 2
+                offset = amplitude / 2 + self.low_signal
+                self.signal_resource.write(
+                    "SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(self.frequency, amplitude, offset))
+            else:
+                offset = self.power * (self.high_signal - self.low_signal) + self.low_signal
+                self.signal_resource.write(
+                    "SOURCE1:APPLY:DC DEFAULT,DEFAULT,{0}".format(offset))
+
         else:
             self.signal_resource.write(
                 "SOURCE1:APPLY:DC DEFAULT,DEFAULT,{0}".format(self.low_signal))
@@ -260,7 +266,7 @@ class Laser:
         return self.power_resource
 
 
-class LaserOutput(OutputDevice):
+class LaserLightSource(LightSource):
     """
     Can enable/disable the laser
     """
@@ -290,9 +296,18 @@ class LaserPowerAxis(ControlAxis):
     def get_custom_config(self):
         return laser_custom_config()
 
+    def get_current_value(self):
+        global LASER
+        if isinstance(LASER, Laser):
+            return LASER.get_power()
+        else:
+            return 0.0
+
     def _write_value(self, value):
-        LASER.set_power(value)
-        print("Setting laser power to: {}".format(value))
+        global LASER
+        if isinstance(LASER, Laser):
+            LASER.set_power(value)
+            print("Setting laser power to: {}".format(value))
 
 
 class LaserFequencyAxis(ControlAxis):
@@ -303,6 +318,15 @@ class LaserFequencyAxis(ControlAxis):
     def get_custom_config(self):
         return laser_custom_config()
 
+    def get_current_value(self):
+        global LASER
+        if isinstance(LASER, Laser):
+            return LASER.get_frequency()
+        else:
+            return 0.0
+
     def _write_value(self, value):
-        LASER.set_frequency(value)
-        print("Setting laser frequency to: {}".format(value))
+        global LASER
+        if isinstance(LASER, Laser):
+            LASER.set_frequency(value)
+            print("Setting laser frequency to: {}".format(value))
