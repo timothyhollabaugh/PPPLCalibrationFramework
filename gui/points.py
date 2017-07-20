@@ -26,7 +26,7 @@ class PointsTab(BaseWidget):
         self._open_file = ControlFile(
             label="Points File: "
         )
-        self._open_file.changed_event = self._on_open_file
+        self._open_file.changed_event = self._on_open_file2
 
         self._points_list = ControlList(
             label="Points",
@@ -70,21 +70,7 @@ class PointsTab(BaseWidget):
         # Update the points with the most recent axis
         if 'axis' in events:
             self._axis = events['axis']
-            self._points_list.clear()
-            self._points_list.horizontal_headers = [
-                axis.get_name() for axis in self._axis]
-            self._points_list.resize_rows_contents()
-
-            length = self._max_axis_len()
-            for i in range(0, length):
-                point = []
-                for axis in self._axis:
-                    assert isinstance(axis, ControlAxis)
-                    if len(axis.points) <= i:
-                        for j in range(len(axis.points) - 1, i):
-                            axis.points.append(axis.get_min())
-                    point.append(axis.points[i])
-                self._points_list += point
+            self._update_lists()
 
         if 'sensor' in events:
             self._sensor = events['sensor']
@@ -98,6 +84,23 @@ class PointsTab(BaseWidget):
                 self._scan_button.label = "Scan"
             else:
                 self._scan_button.label = "Stop"
+
+    def _update_lists(self):
+        self._points_list.clear()
+        self._points_list.horizontal_headers = [
+            axis.get_name() for axis in self._axis]
+        self._points_list.resize_rows_contents()
+
+        length = self._max_axis_len()
+        for i in range(0, length):
+            point = []
+            for axis in self._axis:
+                assert isinstance(axis, ControlAxis)
+                if len(axis.points) <= i:
+                    for j in range(len(axis.points) - 1, i):
+                        axis.points.append(axis.get_min())
+                point.append(axis.points[i])
+            self._points_list += point
 
     def _max_axis_len(self):
         """
@@ -114,15 +117,16 @@ class PointsTab(BaseWidget):
         for axis in self._axis:
             assert isinstance(axis, ControlAxis)
             axis.points.append(0.0)
-        self._points_list += [0.0] * len(self._axis)
+        self._update_lists()
 
     def _remove_point(self):
         index = self._points_list.selected_row_index
         if index is not None:
-            self._points_list -= index
             for axis in self._axis:
                 assert isinstance(axis, ControlAxis)
                 axis.points.pop(index)
+
+        self._update_lists()
 
     def _change_point(self, row, col, item):
         if len(self._axis) > col and len(self._axis[col].points) > row:
@@ -173,3 +177,45 @@ class PointsTab(BaseWidget):
                 except (UnicodeDecodeError, ValueError):
                     print("Could not parse file")
                     return
+
+    def _on_open_file2(self):
+        """
+        Open a csv file and rearange columns accoring to header
+        """
+
+        print("Opening File:", self._open_file.value)
+
+        if self._open_file.value is not None and self._open_file.value != '':
+
+            with open(self._open_file.value, newline='') as csvfile:
+
+                try:
+                    csvreader = csv.reader(csvfile)
+
+                    for axis in self._axis:
+                        if isinstance(axis, ControlAxis):
+                            axis.points.clear()
+                    self._points_list.clear()
+
+                    points = []
+
+                    for row in csvreader:
+                        for index, data in enumerate(row):
+                            if len(points) <= index:
+                                points.append([])
+                            points[index].append(data)
+
+                    print(points)
+
+                    for points_list in points:
+                        print(points_list[0])
+                        if isinstance(points_list[0], str):
+                            for axis in self._axis:
+                                if points_list[0] == axis.get_name():
+                                    axis.points = [float(point) for point in points_list[1:]]
+                                    print(axis.get_name(), axis.points)
+
+                    self._update_lists()
+
+                except:
+                    print("Failed to read file")

@@ -217,7 +217,7 @@ class Sensor:
         """
         return []
 
-    def update_events(self):
+    def update_events(self, events):
         """
         Updates any events sent out
         """
@@ -288,7 +288,7 @@ class AxisController:
         self._step = 0
         self._total_steps = len(self._axis[0].points)
         self._data = [['Time'] + [axis.get_name()
-                                  for axis in self._axis] + self._sensor.get_headers()]
+                                  for axis in self._axis] + self._sensor.get_headers() + ["Ouput Enabled"]]
         self._set_state(AxisControllerState.BEGIN_STEP)
         self._timer.timeout.connect(self._scan)
         self._timer.start()
@@ -330,6 +330,8 @@ class AxisController:
                 datarow.append(axis.get_current_value())
 
             datarow += self._sensor.update()
+
+            datarow += [1.0] if self._output.get_enabled() else [0.0]
 
             self._data.append(datarow)
 
