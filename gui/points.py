@@ -2,7 +2,7 @@
 import csv
 from pyforms import BaseWidget
 from pyforms.Controls import ControlList, ControlNumber, ControlButton, ControlEmptyWidget, ControlFile, ControlText
-from framework import ControlAxis, AxisController
+from framework import ControlAxis, AxisController, AxisControllerState
 
 
 class PointsTab(BaseWidget):
@@ -92,6 +92,11 @@ class PointsTab(BaseWidget):
         if 'output' in events:
             self._output = events['output']
 
+        if 'scan' in events:
+            state = events['scan'][0]
+            self._scan_button.enabled = (state == AxisControllerState.DONE)
+
+
     def _max_axis_len(self):
         """
         Get the number of points in the axis that has the most points
@@ -127,7 +132,7 @@ class PointsTab(BaseWidget):
         """
         self._controller = AxisController(
             self._axis, self._sensor, self._output, self._pre_delay_time.value,
-            self._post_delay_time.value, self._out_file.value)
+            self._post_delay_time.value, self._out_file.value, self._update_function)
         self._controller.begin()
 
     def _on_open_file(self):
@@ -140,19 +145,25 @@ class PointsTab(BaseWidget):
 
             with open(self._open_file.value, newline='') as csvfile:
 
-                for axis in self._axis:
-                    if isinstance(axis, ControlAxis):
-                        axis.points.clear()
-                self._points_list.clear()
+                try:
+                    csvreader = csv.reader(csvfile, quoting=csv.QUOTE_NONNUMERIC)
 
-                csvreader = csv.reader(csvfile, quoting=csv.QUOTE_NONNUMERIC)
-                for row in csvreader:
-                    print(row)
-                    self._points_list += [0.0] * len(self._axis)
-                    for index, data in enumerate(row):
-                        if index < len(self._axis):
-                            axis = self._axis[index]
-                            if isinstance(axis, ControlAxis):
-                                axis.points.append(data)
-                                self._points_list.set_value(
-                                    index, len(axis.points) - 1, data)
+                    for axis in self._axis:
+                        if isinstance(axis, ControlAxis):
+                            axis.points.clear()
+                    self._points_list.clear()
+
+                    for row in csvreader:
+                        print(row)
+                        self._points_list += [0.0] * len(self._axis)
+                        for index, data in enumerate(row):
+                            if index < len(self._axis):
+                                axis = self._axis[index]
+                                if isinstance(axis, ControlAxis):
+                                    axis.points.append(data)
+                                    self._points_list.set_value(
+                                        index, len(axis.points) - 1, data)
+
+                except UnicodeDecodeError:
+                    print("Could not parse file")
+                    return

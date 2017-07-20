@@ -265,6 +265,7 @@ class LaserOutput(OutputDevice):
 
     def set_enabled(self, enable=True):
         global LASER
+        print("Setting Laser Enabled", enable)
         if isinstance(LASER, Laser):
             LASER.set_enabled(enable)
 

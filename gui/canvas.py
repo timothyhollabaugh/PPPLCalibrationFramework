@@ -21,7 +21,7 @@ class Canvas(ControlBase):
         super().__init__("Canvas")
         self._points = [(0, 0)]
         self._timer.timeout.connect(self._form.update)
-        self._timer.start()
+        self._timer.start(200)
 
     def init_form(self):
         self._form = QWidget()

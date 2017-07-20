@@ -18,7 +18,7 @@ class JogTab(BaseWidget):
         self._update_function = update_function
 
         self._timer.timeout.connect(self._timer_update)
-        self._timer.start()
+        self._timer.start(200)
 
         self._xy_panel = ControlEmptyWidget()
         self._xy_panel.setSizePolicy(QSizePolicy(
@@ -31,18 +31,22 @@ class JogTab(BaseWidget):
 
         self._space = ControlEmptyWidget()
 
-        self._enable_output = ControlCheckBox(
-            label="Output Enabled"
+        self._enable_button = ControlButton(
+            label='Enable Output'
         )
+        self._enable_button.value = self._enable_output
+        
+        self._disable_button = ControlButton(
+            label='Disable Output'
+        )
+        self._disable_button.value = self._disable_output
 
         self.formset = [
             '_xy_panel',
             '_aux_panel',
             '_space',
-            '_enable_output'
+            ('_enable_button', '_disable_button')
         ]
-
-        self._enable_output.changed_event = self._on_enable_change
 
     def update_events(self, event):
         if isinstance(self._xy_panel.value, ControlJog):
@@ -72,16 +76,17 @@ class JogTab(BaseWidget):
             for aux_axis in self._aux_panel.value:
                 aux_axis.timer_update()
 
-        if isinstance(self._output, OutputDevice):
-            self._enable_output.value = self._output.get_enabled()
-
     def _send_events(self):
         if callable(self._update_function):
             self._update_function({'output_enable': self._enable_output.value})
 
-    def _on_enable_change(self):
+    def _enable_output(self):
         if isinstance(self._output, OutputDevice):
-            self._output.set_enabled(enable=self._enable_output.value)
+            self._output.set_enabled(True)
+
+    def _disable_output(self):
+        if isinstance(self._output, OutputDevice):
+            self._output.set_enabled(False)
 
 
 class ControlJog(ControlBase):
@@ -195,8 +200,6 @@ class AuxJog(BaseWidget):
     A Widget to jog aux axis
     """
 
-    _updating = False
-
     def __init__(self, axis):
         super().__init__("Aux Jog")
 
@@ -211,7 +214,11 @@ class AuxJog(BaseWidget):
             maximum=axis.get_max(),
             decimals=5
         )
-        self._value_field.changed_event = self._update_value
+
+        self._set_button = ControlButton(
+            label="Set"
+        )
+        self._set_button.value = self._update_value
 
         self._current_field = ControlLabel(
             label="Current Value"
@@ -222,18 +229,13 @@ class AuxJog(BaseWidget):
         self.set_margin(10)
 
         self.formset = [
-            '_value_field',
+            ('_value_field', '_set_button'),
             ("info:Current Value:", '', '', '_current_field')
         ]
 
     def _update_value(self):
-        self._updating = True
         value = self._value_field.value
         self._axis.goto_value(value)
-        self._updating = False
 
     def timer_update(self):
-        if not self._updating and self._value_field.value != self._axis.get_value():
-            self._value_field.value = self._axis.get_value()
-
         self._current_field.value = "{0:.5f}".format(self._axis.get_current_value())

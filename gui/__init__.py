@@ -5,7 +5,7 @@ import time
 from PyQt5.QtWidgets import QSizePolicy
 from PyQt5.QtCore import QTimer
 from pyforms import BaseWidget
-from pyforms.Controls import ControlEmptyWidget, ControlLabel
+from pyforms.Controls import ControlEmptyWidget, ControlLabel, ControlProgress
 from gui.axis import AxisTab
 from gui.jog import JogTab
 from gui.output import OutputTab
@@ -36,10 +36,18 @@ class ControllerWindow(BaseWidget):
         # Create a tabs widget and give it the _update_events(event) function to call whenever there is an event
         self._tabs.value = TabWidget(self._update_events)
 
+        # Create a progress bar
+        self._progress = ControlProgress(
+            label='%v/%m Steps | %p%',
+            default=0,
+            min=0,
+            max=1
+        )
+
         self.formset = [
-            ('_tabs', '_canvas')
+            ('_tabs', '_canvas'),
+            '_progress'
         ]
-        self.has_progress = True
 
 
     def _update_events(self, events):
@@ -51,6 +59,7 @@ class ControllerWindow(BaseWidget):
         'yaxis': Whenever the Y axis changes. Carries the current Y axis
         'output': Whenever the output device changes. Carries the current output
         'sensor': Whenever the sensor changes. Carries the current sensor
+        'scan': Whenever the scan state changes. Carries tuple of (AxisControllerState, step)
         """
         # Distribute the events to the Canvas and Tabs
         if isinstance(self._tabs.value, TabWidget):
@@ -58,6 +67,10 @@ class ControllerWindow(BaseWidget):
 
         if isinstance(self._canvas.value, Canvas):
             self._canvas.value.update_events(events)
+
+        if 'scan' in events:
+            self._progress.max = events['scan'][2]
+            self._progress.value = events['scan'][1]
 
     def before_close_event(self):
         """

@@ -241,7 +241,7 @@ class AxisController:
     _sensor = None
     _output = None
 
-    _state = AxisControllerState.BEGIN_STEP
+    _state = AxisControllerState.DONE
 
     _pre_delay = 0
     _post_delay = 0
@@ -253,10 +253,13 @@ class AxisController:
 
     _outfile = None
 
+    _update_function = None
+
     _step = 0
+    _total_steps = 0
     _timer = QTimer()
 
-    def __init__(self, control_axis, sensor, output, pre_delay, post_delay, outfile=None):
+    def __init__(self, control_axis, sensor, output, pre_delay, post_delay, outfile=None, update_function=None):
         """
         Creates a new Axis Controller with a list of ControlAxis to control
         :param control_axis: a list of ControlAxis in the order that they should be controlled
@@ -268,6 +271,7 @@ class AxisController:
         self._pre_delay = pre_delay
         self._post_delay = post_delay
         self._outfile = outfile
+        self._update_function = update_function
 
     def begin(self):
         """
@@ -275,9 +279,16 @@ class AxisController:
         """
         self._output.set_enabled(False)
         self._step = 0
-        self._state = AxisControllerState.BEGIN_STEP
+        self._total_steps = len(self._axis[0].points)
+        self._data = [['Time'] + [axis.get_name() for axis in self._axis]]
+        self._set_state(AxisControllerState.BEGIN_STEP)
         self._timer.timeout.connect(self._scan)
         self._timer.start()
+
+    def _set_state(self, state):
+        self._state = state
+        if self._update_function is not None:
+            self._update_function({'scan': (self._state, self._step, self._total_steps)})
 
     def _scan(self):
         """
@@ -291,7 +302,7 @@ class AxisController:
                 or self._state == AxisControllerState.WAIT_ENABLE
                 or self._state == AxisControllerState.BEGIN_POST_DELAY
                 or self._state == AxisControllerState.WAIT_POST_DELAY):
-            datarow = [time.time()]
+            datarow = [float(time.time())]
             for axis in self._axis:
                 datarow.append(axis.get_current_value())
 
@@ -309,9 +320,9 @@ class AxisController:
                     done = False
 
             if done:
-                self._state = AxisControllerState.DONE
+                self._set_state(AxisControllerState.DONE)
             else:
-                self._state = AxisControllerState.WAIT_STEP
+                self._set_state(AxisControllerState.WAIT_STEP)
 
         # Wait Step
         elif self._state == AxisControllerState.WAIT_STEP:
@@ -323,27 +334,27 @@ class AxisController:
 
             if done:
                 print()
-                self._state = AxisControllerState.BEGIN_PRE_DELAY
+                self._set_state(AxisControllerState.BEGIN_PRE_DELAY)
 
         # Begin Pre Delay
         elif self._state == AxisControllerState.BEGIN_PRE_DELAY:
             print("Pre Delay")
             self._start_delay = time.time()
-            self._state = AxisControllerState.WAIT_PRE_DELAY
+            self._set_state(AxisControllerState.WAIT_PRE_DELAY)
 
         # Wait Pre Delay
         elif self._state == AxisControllerState.WAIT_PRE_DELAY:
             print('.', end='')
             if time.time() - self._start_delay > self._pre_delay:
                 print()
-                self._state = AxisControllerState.BEGIN_ENABLE
+                self._set_state(AxisControllerState.BEGIN_ENABLE)
 
         # Begin Measuring
         elif self._state == AxisControllerState.BEGIN_ENABLE:
             print("Taking measurement")
             self._output.set_enabled(True)
             self._sensor.begin_measuring()
-            self._state = AxisControllerState.WAIT_ENABLE
+            self._set_state(AxisControllerState.WAIT_ENABLE)
 
         # Wait Measuring
         elif self._state == AxisControllerState.WAIT_ENABLE:
@@ -352,14 +363,14 @@ class AxisController:
             if self._sensor.is_done():
                 print()
 
-                self._state = AxisControllerState.BEGIN_POST_DELAY
+                self._set_state(AxisControllerState.BEGIN_POST_DELAY)
                 self._output.set_enabled(False)
 
         # Begin Post Delay
         elif self._state == AxisControllerState.BEGIN_POST_DELAY:
             print("Post Delay")
             self._start_delay = time.time()
-            self._state = AxisControllerState.WAIT_POST_DELAY
+            self._set_state(AxisControllerState.WAIT_POST_DELAY)
 
         # Wait Post Delay
         elif self._state == AxisControllerState.WAIT_POST_DELAY:
@@ -367,7 +378,7 @@ class AxisController:
             if time.time() - self._start_delay > self._post_delay:
                 print()
                 self._step += 1
-                self._state = AxisControllerState.BEGIN_STEP
+                self._set_state(AxisControllerState.BEGIN_STEP)
 
         elif self._state == AxisControllerState.DONE:
             print("Done.")

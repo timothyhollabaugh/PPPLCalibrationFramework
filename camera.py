@@ -58,14 +58,6 @@ class CameraSensor(Sensor):
             decimals=5
         )
 
-        self._widget.frame_time = ControlNumber(
-            label="Frame Delay (s)",
-            default=0.05,
-            minimum=0,
-            maximum=float('inf'),
-            decimals=5
-        )
-
         self._widget.threshold = ControlSlider(
             label="Threshold",
             default=18,
