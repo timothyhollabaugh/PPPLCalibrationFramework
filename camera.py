@@ -84,11 +84,19 @@ class CameraSensor(Sensor):
         )
         self._widget.show_button.value = self._show_camera
 
+        self._widget.before_close_event = self._hide_camera
+
         self._timer.timeout.connect(self._get_frame)
 
     def __del__(self):
         self._camera.close()
         self._timer.stop()
+        if self._camera_window is not None:
+            self._camera_window.close()
+
+    def update_events(self, events):
+        if 'close' in events:
+            self._hide_camera()
 
     def get_custom_config(self):
         return self._widget
@@ -112,7 +120,7 @@ class CameraSensor(Sensor):
         print("Hiding Camera")
         self._camera.stop()
         if isinstance(self._camera_window, CameraWindow):
-            self._camera_window.hide()
+            self._camera_window.close()
         self._camera_window = None
         self._timer.stop()
 

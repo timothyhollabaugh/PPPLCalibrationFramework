@@ -38,6 +38,10 @@ class SensorTab(BaseWidget):
         for class_type in Sensor.__subclasses__():
             self._device_select.add_item(class_type.__name__, class_type)
 
+    def update_events(self, events):
+        if isinstance(self._sensor, Sensor):
+            self._sensor.update_events(events)
+
     def _on_device_change(self):
         device = self._device_select.value
         if callable(device):

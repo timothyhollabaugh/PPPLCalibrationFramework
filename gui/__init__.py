@@ -60,6 +60,7 @@ class ControllerWindow(BaseWidget):
         'output': Whenever the output device changes. Carries the current output
         'sensor': Whenever the sensor changes. Carries the current sensor
         'scan': Whenever the scan state changes. Carries tuple of (AxisControllerState, step)
+        'close': Whenever the main window is closed. Carries None
         """
         # Distribute the events to the Canvas and Tabs
         if isinstance(self._tabs.value, TabWidget):
@@ -74,8 +75,9 @@ class ControllerWindow(BaseWidget):
 
     def before_close_event(self):
         """
-        Cleanup the Thorlabs stages before closing
+        Cleanup opened resources before closing
         """
+        self._update_events({'close': None})
         motion.cleanup()
         laser.cleanup()
 
@@ -127,3 +129,5 @@ class TabWidget(BaseWidget):
             self._jog_tab.value.update_events(events)
         if isinstance(self._points_tab.value, PointsTab):
             self._points_tab.value.update_events(events)
+        if isinstance(self._sensor_tab.value, SensorTab):
+            self._sensor_tab.value.update_events(events)

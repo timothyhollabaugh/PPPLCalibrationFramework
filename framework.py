@@ -217,6 +217,12 @@ class Sensor:
         """
         return []
 
+    def update_events(self):
+        """
+        Updates any events sent out
+        """
+        pass
+
 
 class AxisControllerState(Enum):
     """
