@@ -433,7 +433,8 @@ class ThorlabsDCx(Camera):
         params.pwchFileName = u"mypic.bmp"
         params.ppcImageMem = None
         print("size", size)
-        _chk(self.clib.is_ImageFile(self.filehandle, 2, ctypes.pointer(params), size))
+        _chk(self.clib.is_ImageFile(
+            self.filehandle, 2, ctypes.pointer(params), size))
 
     def get_parameters(self):
         _chk(self.clib.is_ParameterSet(self.filehandle, 4, "file.ini", None))

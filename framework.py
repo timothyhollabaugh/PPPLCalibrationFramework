@@ -182,7 +182,7 @@ class Sensor:
 
     """
     The thing that is being calibrated
-    
+
     This must be subclasses for each sensor
     """
 
@@ -281,7 +281,8 @@ class AxisController:
         self._output.set_enabled(False)
         self._step = 0
         self._total_steps = len(self._axis[0].points)
-        self._data = [['Time'] + [axis.get_name() for axis in self._axis] + self._sensor.get_headers()]
+        self._data = [['Time'] + [axis.get_name()
+                                  for axis in self._axis] + self._sensor.get_headers()]
         self._set_state(AxisControllerState.BEGIN_STEP)
         self._timer.timeout.connect(self._scan)
         self._timer.start()
@@ -303,7 +304,8 @@ class AxisController:
     def _set_state(self, state):
         self._state = state
         if self._update_function is not None:
-            self._update_function({'scan': (self._state, self._step, self._total_steps)})
+            self._update_function(
+                {'scan': (self._state, self._step, self._total_steps)})
 
     def _scan(self):
         """

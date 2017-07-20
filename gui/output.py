@@ -30,8 +30,6 @@ class OutputTab(BaseWidget):
         for class_type in OutputDevice.__subclasses__():
             self._device_select.add_item(class_type.__name__, class_type)
 
-
-
     def _on_device_change(self):
         device = self._device_select.value
         if callable(device):

@@ -9,6 +9,7 @@ from pyforms.Controls import ControlNumber, ControlLabel
 from labjack import ljm
 from framework import Sensor
 
+
 class PDA36A(Sensor):
     """
     A Sensor to measure the output of a PDA36A sensor with a Labjack
@@ -90,7 +91,7 @@ class PDA36A(Sensor):
 
             # Read the voltage from AIN0
             self._power = ljm.eReadName(self._labjack, 'AIN0')
-            
+
             # Calculate the frequency
             # We need to get the time from rising edge to rising edge
             on = self._power > self._widget.threshold.value

@@ -44,7 +44,7 @@ class Canvas(ControlBase):
             transform = QTransform()
             transform.translate(display_min.x(), display_max.y())
             transform.scale((display_max.x() - display_min.x()) / (world_max.x() - world_min.x()),
-                           -(display_max.y() - display_min.y()) / (world_max.y() - world_min.y()))
+                            -(display_max.y() - display_min.y()) / (world_max.y() - world_min.y()))
             transform.translate(-world_min.x(), -world_min.y())
 
             position = transform.map(
@@ -57,7 +57,8 @@ class Canvas(ControlBase):
 
             painter.setRenderHint(QPainter.Antialiasing)
 
-            painter.fillRect(QRectF(display_min, display_max), QColor(255, 255, 255))
+            painter.fillRect(QRectF(display_min, display_max),
+                             QColor(255, 255, 255))
 
             axis_pen = QPen()
             axis_pen.setColor(QColor(128, 128, 128))
@@ -78,20 +79,21 @@ class Canvas(ControlBase):
                              QPointF(origin.x(), widget_max.y()))
 
             painter.setPen(position_pen)
-            painter.drawLine(QPointF(position.x()-10, position.y()),
-                             QPointF(position.x()+10, position.y()))
-            painter.drawLine(QPointF(position.x(), position.y()+10),
-                             QPointF(position.x(), position.y()-10))
+            painter.drawLine(QPointF(position.x() - 10, position.y()),
+                             QPointF(position.x() + 10, position.y()))
+            painter.drawLine(QPointF(position.x(), position.y() + 10),
+                             QPointF(position.x(), position.y() - 10))
 
             painter.setPen(point_pen)
 
             for i in range(0, max(len(self._xaxis.points), len(self._yaxis.points))):
-                point = transform.map(QPointF(self._xaxis.points[i], self._yaxis.points[i]))
-                painter.drawLine(QPointF(point.x()-10, point.y()-10),
-                                 QPointF(point.x()+10, point.y()+10))
+                point = transform.map(
+                    QPointF(self._xaxis.points[i], self._yaxis.points[i]))
+                painter.drawLine(QPointF(point.x() - 10, point.y() - 10),
+                                 QPointF(point.x() + 10, point.y() + 10))
 
-                painter.drawLine(QPointF(point.x()+10, point.y()-10),
-                                 QPointF(point.x()-10, point.y()+10))
+                painter.drawLine(QPointF(point.x() + 10, point.y() - 10),
+                                 QPointF(point.x() - 10, point.y() + 10))
 
             painter.end()
 

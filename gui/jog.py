@@ -35,7 +35,7 @@ class JogTab(BaseWidget):
             label='Enable Output'
         )
         self._enable_button.value = self._enable_output
-        
+
         self._disable_button = ControlButton(
             label='Disable Output'
         )
@@ -235,13 +235,13 @@ class AuxJog(BaseWidget):
             ("info:Current Value:", '', '', '_current_field')
         ]
 
-
     def _update_value(self):
         value = self._value_field.value
         self._axis.goto_value(value)
 
     def timer_update(self):
-        self._current_field.value = "{0:.5f}".format(self._axis.get_current_value())
+        self._current_field.value = "{0:.5f}".format(
+            self._axis.get_current_value())
 
         if self._axis.get_value() != self._last_set_value:
             self._value_field.value = self._axis.get_value()

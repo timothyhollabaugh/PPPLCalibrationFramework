@@ -99,7 +99,6 @@ class PointsTab(BaseWidget):
             else:
                 self._scan_button.label = "Stop"
 
-
     def _max_axis_len(self):
         """
         Get the number of points in the axis that has the most points
@@ -152,7 +151,8 @@ class PointsTab(BaseWidget):
             with open(self._open_file.value, newline='') as csvfile:
 
                 try:
-                    csvreader = csv.reader(csvfile, quoting=csv.QUOTE_NONNUMERIC)
+                    csvreader = csv.reader(
+                        csvfile, quoting=csv.QUOTE_NONNUMERIC)
 
                     for axis in self._axis:
                         if isinstance(axis, ControlAxis):

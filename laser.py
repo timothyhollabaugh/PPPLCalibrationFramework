@@ -118,6 +118,7 @@ def update_laser(_):
         signal_resource = RESOURCE_MANAGER.open_resource(signal)
         LASER = Laser(power_resource, channel, signal_resource)
 
+
 def cleanup():
     global WIDGET
     if isinstance(WIDGET, BaseWidget):
@@ -128,6 +129,7 @@ def cleanup():
                     resource.close()
 
     RESOURCE_MANAGER.close()
+
 
 class Laser:
     """

@@ -50,7 +50,6 @@ class ControllerWindow(BaseWidget):
             '_progress'
         ]
 
-
     def _update_events(self, events):
         """
         Update the events fired by other classes
@@ -108,7 +107,7 @@ class TabWidget(BaseWidget):
         self._sensor_tab = ControlEmptyWidget()
         self._sensor_tab.value = SensorTab(self._update_function)
 
-        # Define that the Controls should be shown as tabs. 
+        # Define that the Controls should be shown as tabs.
         # See pyforms docs for details
         self.formset = [
             {

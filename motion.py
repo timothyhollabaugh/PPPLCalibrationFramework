@@ -224,7 +224,7 @@ class RotateAxis(ControlAxis):
         Do math to convert an angle the stage is pointed at
         to the position on the surface
         """
-        return (self._distance_to_surface\
+        return (self._distance_to_surface
                 * math.tan(
                     (angle - self._ticks_to_level)
                     * (2 * math.pi)
