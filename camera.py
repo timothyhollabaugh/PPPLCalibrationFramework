@@ -176,7 +176,8 @@ class CameraSensor(Sensor):
 
     def begin_measuring(self):
         self._power = 0
-        self._show_camera()
+        if not self._camera_window.visible:
+            self._show_camera()
         self._start_time = time.time()
 
     def update(self):
@@ -184,6 +185,9 @@ class CameraSensor(Sensor):
 
     def is_done(self):
         return time.time() - self._start_time > self._widget.measure_time.value
+
+    def get_headers(self):
+        return ["Camera X", "Camera Y", "Camera Power", "Camera Frequency"]
 
 
 class CameraWindow(BaseWidget):

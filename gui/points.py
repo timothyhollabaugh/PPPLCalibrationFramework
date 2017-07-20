@@ -94,7 +94,10 @@ class PointsTab(BaseWidget):
 
         if 'scan' in events:
             state = events['scan'][0]
-            self._scan_button.enabled = (state == AxisControllerState.DONE)
+            if state == AxisControllerState.DONE:
+                self._scan_button.label = "Scan"
+            else:
+                self._scan_button.label = "Stop"
 
 
     def _max_axis_len(self):
@@ -130,10 +133,13 @@ class PointsTab(BaseWidget):
         """
         Create an AxisController and begin scanning
         """
-        self._controller = AxisController(
-            self._axis, self._sensor, self._output, self._pre_delay_time.value,
-            self._post_delay_time.value, self._out_file.value, self._update_function)
-        self._controller.begin()
+        if self._controller is None or self._controller.get_state() == AxisControllerState.DONE:
+            self._controller = AxisController(
+                self._axis, self._sensor, self._output, self._pre_delay_time.value,
+                self._post_delay_time.value, self._out_file.value, self._update_function)
+            self._controller.begin()
+        else:
+            self._controller.stop()
 
     def _on_open_file(self):
         """
@@ -164,6 +170,6 @@ class PointsTab(BaseWidget):
                                     self._points_list.set_value(
                                         index, len(axis.points) - 1, data)
 
-                except UnicodeDecodeError:
+                except (UnicodeDecodeError, ValueError):
                     print("Could not parse file")
                     return

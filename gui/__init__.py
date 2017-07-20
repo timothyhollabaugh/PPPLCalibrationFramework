@@ -13,6 +13,7 @@ from gui.points import PointsTab
 from gui.sensor import SensorTab
 from gui.canvas import Canvas
 import motion
+import laser
 
 
 class ControllerWindow(BaseWidget):
@@ -77,6 +78,7 @@ class ControllerWindow(BaseWidget):
         Cleanup the Thorlabs stages before closing
         """
         motion.cleanup()
+        laser.cleanup()
 
 
 class TabWidget(BaseWidget):

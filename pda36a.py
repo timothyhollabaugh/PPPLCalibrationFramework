@@ -113,3 +113,6 @@ class PDA36A(Sensor):
 
     def is_done(self):
         return time.time() - self._start_time > self._widget.measure_time.value
+
+    def get_headers(self):
+        return ["PDA36A Power", "PDA36A Frequency"]

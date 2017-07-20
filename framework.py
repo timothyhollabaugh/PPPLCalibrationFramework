@@ -178,7 +178,7 @@ class OutputDevice(ABC):
         return None
 
 
-class Sensor(ABC):
+class Sensor:
 
     """
     The thing that is being calibrated
@@ -195,8 +195,9 @@ class Sensor(ABC):
     def update(self):
         """
         Gets called repeatedly while scanning
+        Should return the most recent measurements
         """
-        pass
+        return []
 
     def begin_measuring(self):
         """
@@ -210,9 +211,9 @@ class Sensor(ABC):
         """
         return True
 
-    def get_data(self):
+    def get_headers(self):
         """
-        Returns the measured data as a list
+        Gets the headers for the data returned
         """
         return []
 
@@ -280,10 +281,24 @@ class AxisController:
         self._output.set_enabled(False)
         self._step = 0
         self._total_steps = len(self._axis[0].points)
-        self._data = [['Time'] + [axis.get_name() for axis in self._axis]]
+        self._data = [['Time'] + [axis.get_name() for axis in self._axis] + self._sensor.get_headers()]
         self._set_state(AxisControllerState.BEGIN_STEP)
         self._timer.timeout.connect(self._scan)
         self._timer.start()
+
+    def stop(self):
+        """
+        Stops the current scan
+        """
+        self._timer.stop()
+        self._set_state(AxisControllerState.DONE)
+        self._output.set_enabled(False)
+
+    def get_state(self):
+        """
+        Gets the current state
+        """
+        return self._state
 
     def _set_state(self, state):
         self._state = state

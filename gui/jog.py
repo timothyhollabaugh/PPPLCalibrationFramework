@@ -200,6 +200,8 @@ class AuxJog(BaseWidget):
     A Widget to jog aux axis
     """
 
+    _last_set_value = 0
+
     def __init__(self, axis):
         super().__init__("Aux Jog")
 
@@ -233,9 +235,14 @@ class AuxJog(BaseWidget):
             ("info:Current Value:", '', '', '_current_field')
         ]
 
+
     def _update_value(self):
         value = self._value_field.value
         self._axis.goto_value(value)
 
     def timer_update(self):
         self._current_field.value = "{0:.5f}".format(self._axis.get_current_value())
+
+        if self._axis.get_value() != self._last_set_value:
+            self._value_field.value = self._axis.get_value()
+            self._last_set_value = self._axis.get_value()

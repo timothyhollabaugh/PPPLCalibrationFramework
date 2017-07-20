@@ -118,6 +118,16 @@ def update_laser(_):
         signal_resource = RESOURCE_MANAGER.open_resource(signal)
         LASER = Laser(power_resource, channel, signal_resource)
 
+def cleanup():
+    global WIDGET
+    if isinstance(WIDGET, BaseWidget):
+        for item in WIDGET.power_supply.items:
+            if isinstance(item, tuple):
+                resource = item[1]
+                if isinstance(resource, visa.Resource):
+                    resource.close()
+
+    RESOURCE_MANAGER.close()
 
 class Laser:
     """

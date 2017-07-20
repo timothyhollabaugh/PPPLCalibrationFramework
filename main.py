@@ -21,3 +21,4 @@ try:
 finally:
     # Need to release the Thorlabs stages, or they get stuck and need to be restarted
     motion.cleanup()
+    laser.cleanup()
