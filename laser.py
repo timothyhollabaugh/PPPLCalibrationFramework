@@ -309,6 +309,9 @@ class LaserPowerAxis(ControlAxis):
             LASER.set_power(value)
             print("Setting laser power to: {}".format(value))
 
+    def get_units(self):
+        return "0-1"
+
 
 class LaserFequencyAxis(ControlAxis):
     """
@@ -330,3 +333,6 @@ class LaserFequencyAxis(ControlAxis):
         if isinstance(LASER, Laser):
             LASER.set_frequency(value)
             print("Setting laser frequency to: {}".format(value))
+
+    def get_units(self):
+        return "Hz"

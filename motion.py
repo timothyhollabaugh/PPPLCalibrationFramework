@@ -130,6 +130,9 @@ class LinearAxis(ControlAxis):
         if self._linear_stage is not None:
             return not self._linear_stage.is_in_motion
 
+    def get_units(self):
+        return "mm"
+
 
 class RotateAxis(ControlAxis):
     """
@@ -263,3 +266,6 @@ class RotateAxis(ControlAxis):
             return not self._rotation_stage.is_in_motion
         else:
             return False
+
+    def get_units(self):
+        return "mm"

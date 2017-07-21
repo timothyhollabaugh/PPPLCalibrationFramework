@@ -210,7 +210,7 @@ class AuxJog(BaseWidget):
         self._axis = axis
 
         self._value_field = ControlNumber(
-            label=axis.get_name(),
+            label="{0} ({1})".format(axis.get_name(), axis.get_units()),
             default=axis.get_value(),
             minimum=axis.get_min(),
             maximum=axis.get_max(),
@@ -223,7 +223,7 @@ class AuxJog(BaseWidget):
         self._set_button.value = self._update_value
 
         self._current_field = ControlLabel(
-            label="Current Value"
+            label="Current Value ({})".format(axis.get_units())
         )
 
         self.setFrameShape(QFrame.StyledPanel)
@@ -232,7 +232,7 @@ class AuxJog(BaseWidget):
 
         self.formset = [
             ('_value_field', '_set_button'),
-            ("info:Current Value:", '', '', '_current_field')
+            ("info:Current Value ({}):".format(axis.get_units()), '', '', '_current_field')
         ]
 
     def _update_value(self):

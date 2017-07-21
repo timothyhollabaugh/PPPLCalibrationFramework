@@ -72,17 +72,23 @@ class AxisTab(BaseWidget):
         index = self._axis_list.selected_row_index
         if not index is None:
             axis = self._axis[index]
-            assert isinstance(axis, ControlAxis)
-
             if not axis is None:
+                assert isinstance(axis, ControlAxis)
+
+                # Get the hardware type from the name of the class
                 self._axis_hw_type.value = type(axis).__name__
 
+                # Update the minimum box
                 self._min.show()
+                self._min.label = "Minimum ({})".format(axis.get_units())
                 self._min.value = axis.get_min()
 
+                # Update the maximum box
                 self._max.show()
+                self._max.label = "Maximum ({})".format(axis.get_units())
                 self._max.value = axis.get_max()
 
+                # Populate the special axis combo
                 special_axis = ControlCombo(label="Special Axis")
                 special_axis.add_item('', '')
                 special_axis.add_item("X Axis", 'xaxis')
@@ -113,6 +119,7 @@ class AxisTab(BaseWidget):
 
                 self._special_axis.value = special_axis
 
+                # Update the custom config GUI
                 self._axis_custom.value = axis.get_custom_config()
             else:
                 self._axis_hw_type.value = ''

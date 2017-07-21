@@ -150,6 +150,12 @@ class ControlAxis(ABC):
         """
         self._name = name
 
+    def get_units(self):
+        """
+        Return a string of the units used for this axis
+        """
+        return ""
+
 
 class LightSource(ABC):
     """
