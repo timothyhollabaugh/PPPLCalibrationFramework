@@ -152,6 +152,9 @@ class Laser:
     frequency = 0.0
     enabled = False
 
+    delay = 0.01
+    last_write = 0
+
     def __init__(self, power_resource, power_channel, signal_resource):
         """
         Create a Laser
@@ -192,7 +195,8 @@ class Laser:
         """
         Updates the laser to current power, frequency, and enabled
         """
-        if self.enabled:
+
+        if time.time() - self.last_write > self.delay:
             if self.frequency > 0:
                 amplitude = self.power * (self.high_signal - self.low_signal) / 2
                 offset = amplitude / 2 + self.low_signal
@@ -203,9 +207,12 @@ class Laser:
                 self.signal_resource.write(
                     "SOURCE1:APPLY:DC DEFAULT,DEFAULT,{0}".format(offset))
 
-        else:
-            self.signal_resource.write(
-                "SOURCE1:APPLY:DC DEFAULT,DEFAULT,{0}".format(self.low_signal))
+            if self.enabled:
+                self.power_resource.write("OUT1")
+            else:
+                self.power_resource.write("OUT0")
+        
+            self.last_write = time.time()
 
     def set_enabled(self, enable=True):
         """
