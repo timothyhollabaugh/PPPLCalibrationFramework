@@ -49,6 +49,9 @@ class ControlAxis(ABC):
     _max = 0
     _min = 0
 
+    _norm_min = 0
+    _norm_max = 1
+
     def __init__(self, name):
         self._name = name
         self.points = []
@@ -111,6 +114,30 @@ class ControlAxis(ABC):
         Gets the max value
         """
         return self._max
+
+    def set_norm_min(self, min_value):
+        """
+        Sets the norm_min value
+        """
+        self._norm_min = min_value
+
+    def set_norm_max(self, max_value):
+        """
+        Sets the norm_max value
+        """
+        self._norm_max = max_value
+
+    def get_norm_min(self):
+        """
+        Gets the norm_min value
+        """
+        return self._norm_min
+
+    def get_norm_max(self):
+        """
+        Gets the norm_max value
+        """
+        return self._norm_max
 
     def get_value(self):
         """

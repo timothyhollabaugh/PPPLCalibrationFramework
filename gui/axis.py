@@ -44,7 +44,7 @@ class AxisTab(BaseWidget):
         )
 
         self._min.changed_event = self._on_min_changed
-        self._min.hide()
+        self._min.visible = False
 
         self._max = ControlNumber(
             label="Maximum",
@@ -54,7 +54,27 @@ class AxisTab(BaseWidget):
         )
 
         self._max.changed_event = self._on_max_changed
-        self._max.hide()
+        self._max.visible = False
+
+        self._norm_min = ControlNumber(
+            label="Norm. Min",
+            minimum=-float('inf'),
+            maximum=float('inf'),
+            decimals=5
+        )
+
+        self._norm_min.changed_event = self._on_norm_min_changed
+        self._norm_min.visible = False
+
+        self._norm_max = ControlNumber(
+            label="Norm. Max",
+            minimum=-float('inf'),
+            maximum=float('inf'),
+            decimals=5
+        )
+
+        self._norm_max.changed_event = self._on_norm_max_changed
+        self._norm_max.visible = False
 
         self._special_axis = ControlEmptyWidget()
 
@@ -64,6 +84,7 @@ class AxisTab(BaseWidget):
             '_axis_list',
             '_axis_hw_type',
             ('_min', '_max'),
+            ('_norm_min', '_norm_max'),
             '_special_axis',
             '_axis_custom'
         ]
@@ -79,14 +100,24 @@ class AxisTab(BaseWidget):
                 self._axis_hw_type.value = type(axis).__name__
 
                 # Update the minimum box
-                self._min.show()
+                self._min.visible = True
                 self._min.label = "Minimum ({})".format(axis.get_units())
                 self._min.value = axis.get_min()
 
                 # Update the maximum box
-                self._max.show()
+                self._max.visible = True
                 self._max.label = "Maximum ({})".format(axis.get_units())
                 self._max.value = axis.get_max()
+
+                # Update the norm_minimum box
+                self._norm_min.visible = True
+                self._norm_min.label = "Norm. Min ({})".format(axis.get_units())
+                self._norm_min.value = axis.get_min()
+
+                # Update the norm_maximum box
+                self._norm_max.visible = True
+                self._norm_max.label = "Norm. Max ({})".format(axis.get_units())
+                self._norm_max.value = axis.get_max()
 
                 # Populate the special axis combo
                 special_axis = ControlCombo(label="Special Axis")
@@ -123,14 +154,18 @@ class AxisTab(BaseWidget):
                 self._axis_custom.value = axis.get_custom_config()
             else:
                 self._axis_hw_type.value = ''
-                self._min.hide()
-                self._max.hide()
+                self._min.visible = False
+                self._max.visible = False
+                self._norm_min.visible = False
+                self._norm_max.visible = False
                 self._special_axis.value = None
                 self._axis_custom.value = None
         else:
             self._axis_hw_type.value = ''
-            self._min.hide()
-            self._max.hide()
+            self._min.visible = False
+            self._max.visible = False
+            self._norm_min.visible = False
+            self._norm_max.visible = False
             self._special_axis.value = None
             self._axis_custom.value = None
 
@@ -201,6 +236,26 @@ class AxisTab(BaseWidget):
             if axis is not None:
                 if axis.get_max() != self._max.value:
                     axis.set_max(self._max.value)
+                    self._send_events()
+
+    def _on_norm_min_changed(self):
+        index = self._axis_list.selected_row_index
+        if not index is None:
+            axis = self._axis[index]
+            assert isinstance(axis, ControlAxis)
+            if axis is not None:
+                if axis.get_norm_min() != self._norm_min.value:
+                    axis.set_norm_min(self._norm_min.value)
+                    self._send_events()
+
+    def _on_norm_max_changed(self):
+        index = self._axis_list.selected_row_index
+        if not index is None:
+            axis = self._axis[index]
+            assert isinstance(axis, ControlAxis)
+            if axis is not None:
+                if axis.get_norm_max() != self._norm_max.value:
+                    axis.set_norm_max(self._norm_max.value)
                     self._send_events()
 
 
