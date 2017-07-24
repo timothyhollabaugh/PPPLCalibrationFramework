@@ -1,5 +1,6 @@
 
 import csv
+from PyQt5.QtWidgets import QFileDialog
 from pyforms import BaseWidget
 from pyforms.Controls import ControlList, ControlNumber, ControlButton, ControlEmptyWidget, ControlFile, ControlText
 from framework import ControlAxis, AxisController, AxisControllerState
@@ -17,6 +18,7 @@ class PointsTab(BaseWidget):
     _controller = None
     _sensor = None
     _lightsource = None
+    _saved_points = None
 
     def __init__(self, update_function=None):
         super().__init__("Points")
@@ -27,6 +29,11 @@ class PointsTab(BaseWidget):
             label="Points File: "
         )
         self._open_file.changed_event = self._on_open_file2
+
+        self._save_file = ControlButton(
+            label="Save"
+        )
+        self._save_file.value = self._save_points
 
         self._points_list = ControlList(
             label="Points",
@@ -62,6 +69,14 @@ class PointsTab(BaseWidget):
         )
         self._scan_button.value = self._begin_scan
 
+        self.formset = [
+            ('_open_file', '_save_file'),
+            '_points_list',
+            ('_pre_delay_time', '_post_delay_time'),
+            '_out_file',
+            '_scan_button'
+        ]
+
     def update_events(self, events):
         """
         Updates all events
@@ -85,6 +100,9 @@ class PointsTab(BaseWidget):
             else:
                 self._scan_button.label = "Stop"
 
+        if 'saved_points' in events:
+            self._saved_points = events['saved_points']
+
     def _update_lists(self):
         self._points_list.clear()
         self._points_list.horizontal_headers = [
@@ -96,10 +114,13 @@ class PointsTab(BaseWidget):
             point = []
             for axis in self._axis:
                 assert isinstance(axis, ControlAxis)
+
+                # Add enough extra points to the axis so it matches the rest of the axis if it is missing points
                 if len(axis.points) <= i:
                     for j in range(len(axis.points) - 1, i):
-                        axis.points.append(axis.get_min())
-                point.append(axis.points[i])
+                        axis.points.append(str(axis.get_min()))
+
+                point.append(str(axis.points[i]))
             self._points_list += point
 
     def _max_axis_len(self):
@@ -116,7 +137,7 @@ class PointsTab(BaseWidget):
     def _add_point(self):
         for axis in self._axis:
             assert isinstance(axis, ControlAxis)
-            axis.points.append(0.0)
+            axis.points.append("0.0")
         self._update_lists()
 
     def _remove_point(self):
@@ -130,7 +151,10 @@ class PointsTab(BaseWidget):
 
     def _change_point(self, row, col, item):
         if len(self._axis) > col and len(self._axis[col].points) > row:
-            self._axis[col].points[row] = item
+            try:
+                self._axis[col].points[row] = float(item)
+            except ValueError:
+                self._axis[col].points[row] = item
 
     def _begin_scan(self):
         """
@@ -139,7 +163,7 @@ class PointsTab(BaseWidget):
         if self._controller is None or self._controller.get_state() == AxisControllerState.DONE:
             self._controller = AxisController(
                 self._axis, self._sensor, self._lightsource, self._pre_delay_time.value,
-                self._post_delay_time.value, self._out_file.value, self._update_function)
+                self._post_delay_time.value, self._saved_points, self._out_file.value, self._update_function)
             self._controller.begin()
         else:
             self._controller.stop()
@@ -182,7 +206,6 @@ class PointsTab(BaseWidget):
         """
         Open a csv file and rearange columns accoring to header
         """
-
         print("Opening File:", self._open_file.value)
 
         if self._open_file.value is not None and self._open_file.value != '':
@@ -212,10 +235,47 @@ class PointsTab(BaseWidget):
                         if isinstance(points_list[0], str):
                             for axis in self._axis:
                                 if points_list[0] == axis.get_name():
-                                    axis.points = [float(point) for point in points_list[1:]]
+                                    axis.points.clear()
+                                    for point in points_list[1:]:
+                                        try:
+                                            axis.points.append(float(point))
+                                        except ValueError:
+                                            axis.points.append(point)
                                     print(axis.get_name(), axis.points)
 
                     self._update_lists()
 
                 except:
                     print("Failed to read file")
+
+    def _save_points(self):
+        points_file = QFileDialog.getSaveFileName(caption = "Save Points", filter = 'CSV Files (*.csv)')
+        print(points_file)
+
+        out_points = []
+
+        headers = []
+        for axis in self._axis:
+            headers.append(axis.get_name())
+
+        out_points.append(headers)
+
+        length = self._max_axis_len()
+        for i in range(0, length):
+            point = []
+            for axis in self._axis:
+                assert isinstance(axis, ControlAxis)
+
+                # Add enough extra points to the axis so it matches the rest of the axis if it is missing points
+                if len(axis.points) <= i:
+                    for j in range(len(axis.points) - 1, i):
+                        axis.points.append(str(axis.get_min()))
+
+                point.append(str(axis.points[i]))
+            out_points.append(point)
+
+        with open(points_file[0], 'w', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+            csvwriter.writerows(out_points)
+
+        self._open_file.value = points_file[0]

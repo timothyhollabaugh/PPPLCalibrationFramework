@@ -260,6 +260,8 @@ class AxisController:
     _post_delay = 0
     _start_delay = 0
 
+    _saved_points = None
+
     _data = []
 
     _measuring = False
@@ -272,7 +274,7 @@ class AxisController:
     _total_steps = 0
     _timer = QTimer()
 
-    def __init__(self, control_axis, sensor, lightsource, pre_delay, post_delay, outfile=None, update_function=None):
+    def __init__(self, control_axis, sensor, lightsource, pre_delay, post_delay, saved_points=None, outfile=None, update_function=None):
         """
         Creates a new Axis Controller with a list of ControlAxis to control
         :param control_axis: a list of ControlAxis in the order that they should be controlled
@@ -283,6 +285,7 @@ class AxisController:
         self._lightsource = lightsource
         self._pre_delay = pre_delay
         self._post_delay = post_delay
+        self._saved_points = saved_points
         self._outfile = outfile
         self._update_function = update_function
 
@@ -290,11 +293,24 @@ class AxisController:
         """
         Starts scanning
         """
-        self._lightsource.set_enabled(False)
+        if self._lightsource is not None:
+            self._lightsource.set_enabled(False)
         self._step = 0
         self._total_steps = len(self._axis[0].points)
-        self._data = [['Time'] + [axis.get_name()
-                                  for axis in self._axis] + self._sensor.get_headers() + ["Ouput Enabled"]]
+        
+        headers = []
+
+        headers.append("Time")
+
+        for axis in self._axis:
+            headers.append(axis)
+
+        if isinstance(self._sensor, Sensor):
+            headers.extend(self._sensor.get_headers)
+        
+        if isinstance(self._lightsource, LightSource):
+            headers.append("Light Source Enabled")
+
         self._set_state(AxisControllerState.BEGIN_STEP)
         self._timer.timeout.connect(self._scan)
         self._timer.start()
@@ -305,7 +321,8 @@ class AxisController:
         """
         self._timer.stop()
         self._set_state(AxisControllerState.DONE)
-        self._lightsource.set_enabled(False)
+        if self._lightsource is not None:
+            self._lightsource.set_enabled(False)
 
     def get_state(self):
         """
@@ -335,9 +352,11 @@ class AxisController:
             for axis in self._axis:
                 datarow.append(axis.get_current_value())
 
-            datarow += self._sensor.update()
+            if self._sensor is not None:
+                datarow += self._sensor.update()
 
-            datarow += [1.0] if self._lightsource.get_enabled() else [0.0]
+            if self._lightsource is not None:
+                datarow += [1.0] if self._lightsource.get_enabled() else [0.0]
 
             self._data.append(datarow)
 
@@ -347,7 +366,11 @@ class AxisController:
             done = True
             for axis in self._axis:
                 if len(axis.points) > self._step:
-                    axis.goto_value(axis.points[self._step])
+                    value = axis.points[self._step]
+                    if isinstance(value, float):
+                        axis.goto_value(axis.points[value])
+                    elif self._saved_points is not None and value in self._saved_points:
+                        axis.goto_value(self._saved_points[value])
                     done = False
 
             if done:
@@ -383,19 +406,25 @@ class AxisController:
         # Begin Measuring
         elif self._state == AxisControllerState.BEGIN_ENABLE:
             print("Taking measurement")
-            self._lightsource.set_enabled(True)
-            self._sensor.begin_measuring()
+            
+            if self._lightsource is not None:
+                self._lightsource.set_enabled(True)
+
+            if self._sensor is not None:
+                self._sensor.begin_measuring()
+
             self._set_state(AxisControllerState.WAIT_ENABLE)
 
         # Wait Measuring
         elif self._state == AxisControllerState.WAIT_ENABLE:
             print('.', end='')
 
-            if self._sensor.is_done():
+            if self._sensor is None or self._sensor.is_done():
                 print()
 
                 self._set_state(AxisControllerState.BEGIN_POST_DELAY)
-                self._lightsource.set_enabled(False)
+                if self._lightsource is not None:
+                    self._lightsource.set_enabled(False)
 
         # Begin Post Delay
         elif self._state == AxisControllerState.BEGIN_POST_DELAY:

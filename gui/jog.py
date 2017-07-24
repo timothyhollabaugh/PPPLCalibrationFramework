@@ -1,14 +1,16 @@
 
+from numbers import Number
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QSizePolicy, QGridLayout, QPushButton, QWidget, QVBoxLayout, QFrame
 from pyforms import BaseWidget
-from pyforms.Controls import ControlButton, ControlSlider, ControlEmptyWidget, ControlBase, ControlNumber, ControlCheckBox, ControlLabel
+from pyforms.Controls import ControlButton, ControlSlider, ControlEmptyWidget, ControlBase, ControlNumber, ControlCheckBox, ControlLabel, ControlCombo, ControlTree
 import qtawesome as qta
 from framework import ControlAxis, LightSource
 
 
 class JogTab(BaseWidget):
 
+    _saved_points = {}
     _lightsource = None
     _timer = QTimer()
 
@@ -26,7 +28,7 @@ class JogTab(BaseWidget):
         self._xy_panel.value = ControlJog()
 
         self._aux_panel = ControlEmptyWidget()
-        self._aux_panel.setSizePolicy(QSizePolicy(
+        self._aux_panel.form.setSizePolicy(QSizePolicy(
             QSizePolicy.Expanding, QSizePolicy.Fixed))
 
         self._space = ControlEmptyWidget()
@@ -52,6 +54,13 @@ class JogTab(BaseWidget):
         if isinstance(self._xy_panel.value, ControlJog):
             self._xy_panel.value.update_event(event)
 
+        if isinstance(self._aux_panel.value, list):
+            for aux_axis in self._aux_panel.value:
+                aux_axis.update_events(event)
+
+        if 'saved_points' in event:
+            self._saved_points = event
+
         xaxis = None
         yaxis = None
 
@@ -65,7 +74,9 @@ class JogTab(BaseWidget):
             aux_axis = []
             for axis in event['axis']:
                 if axis is not None:
-                    aux_axis.append(AuxJog(axis))
+                    aux_jog = AuxJog(axis)
+                    aux_jog.update_events({'saved_points': self._saved_points})
+                    aux_axis.append(aux_jog)
             self._aux_panel.value = aux_axis
 
         if 'lightsource' in event:
@@ -78,7 +89,8 @@ class JogTab(BaseWidget):
 
     def _send_events(self):
         if callable(self._update_function):
-            self._update_function({'lightsource_enable': self._enable_lightsource.value})
+            self._update_function(
+                {'lightsource_enable': self._enable_lightsource.value})
 
     def _enable_lightsource(self):
         if isinstance(self._lightsource, LightSource):
@@ -201,6 +213,7 @@ class AuxJog(BaseWidget):
     """
 
     _last_set_value = 0
+    label = ""
 
     def __init__(self, axis):
         super().__init__("Aux Jog")
@@ -209,8 +222,10 @@ class AuxJog(BaseWidget):
 
         self._axis = axis
 
+        self.label = axis.get_name()
+
         self._value_field = ControlNumber(
-            label="{0} ({1})".format(axis.get_name(), axis.get_units()),
+            label="Target",
             default=axis.get_value(),
             minimum=axis.get_min(),
             maximum=axis.get_max(),
@@ -218,26 +233,49 @@ class AuxJog(BaseWidget):
         )
 
         self._set_button = ControlButton(
-            label="Set"
+            label="Go to target"
         )
         self._set_button.value = self._update_value
+
+        self._saved_point_field = ControlCombo(
+            label="Saved Point"
+        )
+
+        self._saved_point_button = ControlButton(
+            label="Go to saved point"
+        )
+        self._saved_point_button.value = self._update_saved_point
 
         self._current_field = ControlLabel(
             label="Current Value ({})".format(axis.get_units())
         )
 
         self.setFrameShape(QFrame.StyledPanel)
+        self.setSizePolicy(QSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed))
 
         self.set_margin(10)
 
         self.formset = [
+            ("info:{0} ({1}):".format(axis.get_name(),
+                                      axis.get_units()), '', '', '_current_field'),
             ('_value_field', '_set_button'),
-            ("info:Current Value ({}):".format(axis.get_units()), '', '', '_current_field')
+            ('_saved_point_field', '_saved_point_button')
         ]
 
     def _update_value(self):
         value = self._value_field.value
         self._axis.goto_value(value)
+
+    def _update_saved_point(self):
+        if isinstance(self._saved_point_field.value, Number):
+            self._axis.goto_value(self._saved_point_field.value)
+
+    def update_events(self, events):
+        print("Aux Event:", events)
+        if 'saved_points' in events:
+            self._saved_point_field.clear()
+            for key, value in events['saved_points'].items():
+                self._saved_point_field += (key, value)
 
     def timer_update(self):
         self._current_field.value = "{0:.5f}".format(
