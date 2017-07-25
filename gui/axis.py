@@ -5,7 +5,7 @@ GUI for configuring Axis to control
 import json
 from PyQt5.QtWidgets import QFileDialog
 from pyforms import BaseWidget
-from pyforms.Controls import ControlList, ControlLabel, ControlCombo, ControlEmptyWidget, ControlButton, ControlText, ControlNumber
+from pyforms.Controls import ControlList, ControlLabel, ControlCombo, ControlEmptyWidget, ControlButton, ControlText, ControlNumber, ControlFile
 from framework import ControlAxis
 
 
@@ -82,10 +82,10 @@ class AxisTab(BaseWidget):
 
         self._axis_custom = ControlEmptyWidget()
 
-        self._load_button = ControlButton(
+        self._load_button = ControlFile(
             label="Load Axis"
         )
-        self._load_button.value = self._on_load_axis
+        self._load_button.changed_event = self._on_load_axis
 
         self._save_button = ControlButton(
             label="Save Axis"
@@ -287,8 +287,57 @@ class AxisTab(BaseWidget):
         """
         Load an axis from a saved axis file
         """
-        pass
+        if self._load_button.value is not None and self._load_button.value != '':
+            data = {}
+            with open(self._load_button.value) as output_file:
+                try:
+                    data = dict(json.load(output_file))
+                except:
+                    print("Could not read file")
+                    return
+            print(data)
 
+            if 'hw_type' in data:
+
+                name = ""
+                if 'name' in data:
+                    name = data['name']
+
+                axis = None
+                for axis_type in ControlAxis.__subclasses__():
+                    if axis_type.__name__ == data['hw_type']:
+                        axis = axis_type(name)
+
+                if axis is None:
+                    print("No hardware type found!")
+                    return
+
+                assert isinstance(axis, ControlAxis)
+
+                self.add_axis(axis)
+
+                self._update_shown_axis()
+
+                if 'min' in data:
+                    self._min.load_form(data['min'])
+
+                if 'max' in data:
+                    self._max.load_form(data['max'])
+
+                if 'norm_min' in data:
+                    self._norm_min.load_form(data['norm_min'])
+
+                if 'norm_max' in data:
+                    self._norm_max.load_form(data['norm_max'])
+
+                if 'special_axis' in data:
+                    self._special_axis.value.load_form(data['special_axis'])
+
+                self._axis_custom.value = axis.get_custom_config()
+
+                if 'axis-specific' in data and self._axis_custom.value is not None:
+                    self._axis_custom.value.load_form(data['axis-specific'])
+                
     def _on_save_axis(self):
         """
         Save an axis to a file
