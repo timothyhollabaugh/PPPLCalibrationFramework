@@ -2,6 +2,8 @@
 GUI for configuring Axis to control
 """
 
+import json
+from PyQt5.QtWidgets import QFileDialog
 from pyforms import BaseWidget
 from pyforms.Controls import ControlList, ControlLabel, ControlCombo, ControlEmptyWidget, ControlButton, ControlText, ControlNumber
 from framework import ControlAxis
@@ -80,13 +82,24 @@ class AxisTab(BaseWidget):
 
         self._axis_custom = ControlEmptyWidget()
 
+        self._load_button = ControlButton(
+            label="Load Axis"
+        )
+        self._load_button.value = self._on_load_axis
+
+        self._save_button = ControlButton(
+            label="Save Axis"
+        )
+        self._save_button.value = self._on_save_axis
+        self._save_button.visible = False
+
         self.formset = [
             '_axis_list',
-            '_axis_hw_type',
+            ('_axis_hw_type', '_special_axis'),
             ('_min', '_max'),
             ('_norm_min', '_norm_max'),
-            '_special_axis',
-            '_axis_custom'
+            '_axis_custom',
+            ('_load_button', '_save_button')
         ]
 
     def _update_shown_axis(self):
@@ -154,6 +167,8 @@ class AxisTab(BaseWidget):
 
                 # Update the custom config GUI
                 self._axis_custom.value = axis.get_custom_config()
+
+                self._save_button.visible = True
             else:
                 self._axis_hw_type.value = ''
                 self._min.visible = False
@@ -162,6 +177,7 @@ class AxisTab(BaseWidget):
                 self._norm_max.visible = False
                 self._special_axis.value = None
                 self._axis_custom.value = None
+                self._save_button.visible = False
         else:
             self._axis_hw_type.value = ''
             self._min.visible = False
@@ -170,6 +186,7 @@ class AxisTab(BaseWidget):
             self._norm_max.visible = False
             self._special_axis.value = None
             self._axis_custom.value = None
+            self._save_button.visible = False
 
     def _send_events(self):
         if self._update_function is not None:
@@ -265,6 +282,47 @@ class AxisTab(BaseWidget):
                 if axis.get_norm_max() != self._norm_max.value:
                     axis.set_norm_max(self._norm_max.value)
                     self._send_events()
+
+    def _on_load_axis(self):
+        """
+        Load an axis from a saved axis file
+        """
+        pass
+
+    def _on_save_axis(self):
+        """
+        Save an axis to a file
+        """
+        data = {}
+
+        data['name'] = self._axis_list.get_currentrow_value()[0]
+
+        data['hw_type'] = self._axis_hw_type.value
+
+        data['min'] = {}
+        self._min.save_form(data['min'])
+
+        data['max'] = {}
+        self._max.save_form(data['max'])
+
+        data['norm_min'] = {}
+        self._norm_min.save_form(data['norm_min'])
+
+        data['norm_max'] = {}
+        self._norm_max.save_form(data['norm_max'])
+
+        data['special_axis'] = {}
+        self._special_axis.value.save_form(data['special_axis'])
+
+        if self._axis_custom.value is not None:
+            data['axis-specific'] = {}
+            self._axis_custom.value.save_form(data['axis-specific'])
+
+        print(data)
+
+        filename = QFileDialog.getSaveFileName(self, 'Save Axis', filter = 'JSON Files (*.json)')
+        with open(filename[0], 'w') as output_file:
+            json.dump(data, output_file, indent=2)
 
 
 class NewAxisWindow(BaseWidget):
