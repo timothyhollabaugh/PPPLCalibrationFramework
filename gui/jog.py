@@ -3,7 +3,7 @@ from numbers import Number
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QSizePolicy, QGridLayout, QPushButton, QWidget, QVBoxLayout, QFrame
 from pyforms import BaseWidget
-from pyforms.Controls import ControlButton, ControlSlider, ControlEmptyWidget, ControlBase, ControlNumber, ControlCheckBox, ControlLabel, ControlCombo, ControlTree
+from pyforms.Controls import ControlButton, ControlSlider, ControlEmptyWidget, ControlBase, ControlNumber, ControlCheckBox, ControlLabel, ControlCombo, ControlTree, ControlText
 import qtawesome as qta
 from framework import ControlAxis, LightSource
 
@@ -59,7 +59,7 @@ class JogTab(BaseWidget):
                 aux_axis.update_events(event)
 
         if 'saved_points' in event:
-            self._saved_points = event
+            self._saved_points = event['saved_points']
 
         xaxis = None
         yaxis = None
@@ -224,12 +224,9 @@ class AuxJog(BaseWidget):
 
         self.label = axis.get_name()
 
-        self._value_field = ControlNumber(
+        self._value_field = ControlText(
             label="Target",
-            default=axis.get_value(),
-            minimum=axis.get_min(),
-            maximum=axis.get_max(),
-            decimals=5
+            default=str(axis.get_value())
         )
 
         self._set_button = ControlButton(
@@ -267,20 +264,19 @@ class AuxJog(BaseWidget):
         self._axis.goto_value(value)
 
     def _update_saved_point(self):
-        if isinstance(self._saved_point_field.value, Number):
-            self._axis.goto_value(self._saved_point_field.value)
+        self._axis.goto_value(self._saved_point_field.value)
 
     def update_events(self, events):
         print("Aux Event:", events)
         if 'saved_points' in events:
             self._saved_point_field.clear()
             for key, value in events['saved_points'].items():
-                self._saved_point_field += (key, value)
+                self._saved_point_field += (key, key)
 
     def timer_update(self):
         self._current_field.value = "{0:.5f}".format(
             self._axis.get_current_value())
 
-        if self._axis.get_value() != self._last_set_value:
-            self._value_field.value = self._axis.get_value()
-            self._last_set_value = self._axis.get_value()
+        if self._axis.get_string_value() != self._last_set_value:
+            self._value_field.value = self._axis.get_string_value()
+            self._last_set_value = self._axis.get_string_value()

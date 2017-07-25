@@ -58,7 +58,7 @@ class SavedPointsTab(BaseWidget):
 
     def add_saved_point(self, name):
         if not name in self._saved_points:
-            self._saved_points[name] = 0.0
+            self._saved_points[name] = "0.0"
             self._update_saved_points()
             self._send_events()
             return True

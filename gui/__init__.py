@@ -137,6 +137,8 @@ class TabWidget(BaseWidget):
         """
         Updates events
         """
+        if isinstance(self._axis_tab.value, AxisTab):
+            self._axis_tab.value.update_events(events)
         if isinstance(self._jog_tab.value, JogTab):
             self._jog_tab.value.update_events(events)
         if isinstance(self._points_tab.value, PointsTab):

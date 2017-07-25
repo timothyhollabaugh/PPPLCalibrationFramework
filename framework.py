@@ -43,6 +43,7 @@ class ControlAxis(ABC):
     points = None
 
     _value = 0
+    _string_value = "0.0"
     _name = ""
     _type = None
 
@@ -52,11 +53,13 @@ class ControlAxis(ABC):
     _norm_min = 0
     _norm_max = 1
 
+    _saved_points = {}
+
     def __init__(self, name):
         self._name = name
         self.points = []
 
-    # This method must be overrided in subclasses
+    # This method **must** be overrided in subclasses
     @abstractmethod
     def _write_value(self, value):
         """
@@ -89,6 +92,14 @@ class ControlAxis(ABC):
         Homes the axis to go to the endstop
         """
         self.goto_value(0)
+
+    def update_events(self, events):
+        """
+        Call with new events when available
+        """
+        print("Axis", events)
+        if 'saved_points' in events:
+            self._saved_points = events['saved_points']
 
     # These methods should not be overrided unless absolutly required
     def set_min(self, min_value):
@@ -151,19 +162,77 @@ class ControlAxis(ABC):
         """
         return self._value
 
+    def get_string_value(self):
+        """
+        Gets the current value as it was set (keep saved point names and percents)
+        """
+        return self._string_value
+
     def goto_value(self, value):
         """
         Gots to a specified value, clipping to the min and max
+        Name of saved point => resolve value of saved point
+        Number (54) => go to value with world units
+        Percent (27%) => Go to normalized value
         Returns if successful
         """
-        if value < self._min:
-            value = self._min
 
-        if value > self._max:
-            value = self._max
+        print(value)
 
-        self._value = value
-        return self._write_value(self._value)
+        working_value = str(value)
+        done_value = None
+
+        is_string = False
+
+        try:
+            # Try to convert to number immediately
+            print("Trying to convert", working_value, "to float")
+
+            done_value = float(working_value)
+
+            is_string = False
+
+        except ValueError:
+            assert isinstance(working_value, str)
+
+            is_string = True
+
+            # Resolve saved points to values
+            if working_value in self._saved_points:
+                working_value = self._saved_points[working_value]
+                print("Resolved to saved point")
+
+            try:
+                print("Trying again to convert", working_value, "to float")
+
+                if working_value.endswith('%'):
+                    # Percent value
+                    working_value = float(working_value[:-1])
+                    done_value = (working_value / 100) * \
+                        (self._norm_max - self._norm_min) + self._norm_min
+                else:
+                    done_value = float(working_value)
+
+            except ValueError:
+                print("Could not convert", value, "to float")
+                return
+            
+
+        # Clamp the actual value sent to device
+        if done_value < self._min:
+            done_value = self._min
+
+        if done_value > self._max:
+            done_value = self._max
+
+        self._value = done_value
+
+        if is_string:
+            self._string_value = str(value)
+        else:
+            self._string_value = str(done_value)
+
+        return self._write_value(done_value)
 
     def get_name(self):
         """
@@ -324,7 +393,7 @@ class AxisController:
             self._lightsource.set_enabled(False)
         self._step = 0
         self._total_steps = len(self._axis[0].points)
-        
+
         headers = []
 
         headers.append("Time")
@@ -334,7 +403,7 @@ class AxisController:
 
         if isinstance(self._sensor, Sensor):
             headers.extend(self._sensor.get_headers)
-        
+
         if isinstance(self._lightsource, LightSource):
             headers.append("Light Source Enabled")
 
@@ -433,7 +502,7 @@ class AxisController:
         # Begin Measuring
         elif self._state == AxisControllerState.BEGIN_ENABLE:
             print("Taking measurement")
-            
+
             if self._lightsource is not None:
                 self._lightsource.set_enabled(True)
 

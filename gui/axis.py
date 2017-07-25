@@ -111,12 +111,14 @@ class AxisTab(BaseWidget):
 
                 # Update the norm_minimum box
                 self._norm_min.visible = True
-                self._norm_min.label = "Norm. Min ({})".format(axis.get_units())
+                self._norm_min.label = "Norm. Min ({})".format(
+                    axis.get_units())
                 self._norm_min.value = axis.get_min()
 
                 # Update the norm_maximum box
                 self._norm_max.visible = True
-                self._norm_max.label = "Norm. Max ({})".format(axis.get_units())
+                self._norm_max.label = "Norm. Max ({})".format(
+                    axis.get_units())
                 self._norm_max.value = axis.get_max()
 
                 # Populate the special axis combo
@@ -173,6 +175,12 @@ class AxisTab(BaseWidget):
         if self._update_function is not None:
             self._update_function(
                 {'axis': self._axis, 'xaxis': self._xaxis, 'yaxis': self._yaxis})
+
+    def update_events(self, events):
+        print("Axis Tab", events)
+        for axis in self._axis:
+            if isinstance(axis, ControlAxis):
+                axis.update_events(events)
 
     def _on_add_axis(self):
         win = NewAxisWindow(self.add_axis)
