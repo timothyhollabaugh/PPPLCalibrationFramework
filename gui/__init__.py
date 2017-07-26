@@ -69,7 +69,7 @@ class ControllerWindow(BaseWidget):
         'close': Whenever the main window is closed. Carries None
         """
 
-        print(events)
+        #print(events)
         # Distribute the events to the Canvas and Tabs
         if isinstance(self._tabs.value, TabWidget):
             self._tabs.value.update_events(events)

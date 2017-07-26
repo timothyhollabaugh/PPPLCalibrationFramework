@@ -41,6 +41,11 @@ class Canvas(ControlBase):
             world_min = QPointF(self._xaxis.get_min(), self._yaxis.get_min())
             world_max = QPointF(self._xaxis.get_max(), self._yaxis.get_max())
 
+            norm_min = QPointF(self._xaxis.get_norm_min(),
+                               self._yaxis.get_norm_min())
+            norm_max = QPointF(self._xaxis.get_norm_max(),
+                               self._yaxis.get_norm_max())
+
             transform = QTransform()
             transform.translate(display_min.x(), display_max.y())
             transform.scale((display_max.x() - display_min.x()) / (world_max.x() - world_min.x()),
@@ -59,6 +64,9 @@ class Canvas(ControlBase):
 
             painter.fillRect(QRectF(display_min, display_max),
                              QColor(255, 255, 255))
+
+            painter.fillRect(QRectF(transform.map(norm_min),
+                                    transform.map(norm_max)), QColor(220, 220, 220))
 
             axis_pen = QPen()
             axis_pen.setColor(QColor(128, 128, 128))
@@ -87,8 +95,17 @@ class Canvas(ControlBase):
             painter.setPen(point_pen)
 
             for i in range(0, max(len(self._xaxis.points), len(self._yaxis.points))):
-                point = transform.map(
-                    QPointF(self._xaxis.points[i], self._yaxis.points[i]))
+                assert isinstance(self._xaxis, ControlAxis)
+                assert isinstance(self._yaxis, ControlAxis)
+
+                x = self._xaxis.resolve_point(self._xaxis.points[i])
+                y = self._yaxis.resolve_point(self._yaxis.points[i])
+
+                if x is None or y is None:
+                    continue
+
+                point = transform.map(QPointF(x[0], y[0]))
+
                 painter.drawLine(QPointF(point.x() - 10, point.y() - 10),
                                  QPointF(point.x() + 10, point.y() + 10))
 

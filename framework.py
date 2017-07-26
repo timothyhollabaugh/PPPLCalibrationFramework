@@ -97,7 +97,7 @@ class ControlAxis(ABC):
         """
         Call with new events when available
         """
-        print("Axis", events)
+        #print("Axis", events)
         if 'saved_points' in events:
             self._saved_points = events['saved_points']
 
@@ -177,6 +177,22 @@ class ControlAxis(ABC):
         Returns if successful
         """
 
+        done_value, is_string = self.resolve_point(value)
+
+        self._value = done_value
+
+        if is_string:
+            self._string_value = str(value)
+        else:
+            self._string_value = str(done_value)
+
+        return self._write_value(done_value)
+
+    def resolve_point(self, value):
+        """
+        Resovle a point in the form of a number, percent, or saved point into an actual point value
+        """
+
         print(value)
 
         working_value = str(value)
@@ -225,14 +241,7 @@ class ControlAxis(ABC):
         if done_value > self._max:
             done_value = self._max
 
-        self._value = done_value
-
-        if is_string:
-            self._string_value = str(value)
-        else:
-            self._string_value = str(done_value)
-
-        return self._write_value(done_value)
+        return done_value, is_string
 
     def get_name(self):
         """
@@ -247,6 +256,7 @@ class ControlAxis(ABC):
         self._name = name
 
     def get_units(self):
+
         """
         Return a string of the units used for this axis
         """

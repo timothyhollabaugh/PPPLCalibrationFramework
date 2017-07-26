@@ -267,7 +267,7 @@ class AuxJog(BaseWidget):
         self._axis.goto_value(self._saved_point_field.value)
 
     def update_events(self, events):
-        print("Aux Event:", events)
+        #print("Aux Event:", events)
         if 'saved_points' in events:
             self._saved_point_field.clear()
             for key, value in events['saved_points'].items():

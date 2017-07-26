@@ -59,7 +59,7 @@ class AxisTab(BaseWidget):
         self._max.visible = False
 
         self._norm_min = ControlNumber(
-            label="Norm. Min",
+            label="  0%",
             minimum=-float('inf'),
             maximum=float('inf'),
             decimals=5
@@ -69,7 +69,7 @@ class AxisTab(BaseWidget):
         self._norm_min.visible = False
 
         self._norm_max = ControlNumber(
-            label="Norm. Max",
+            label="100%",
             minimum=-float('inf'),
             maximum=float('inf'),
             decimals=5
@@ -113,26 +113,30 @@ class AxisTab(BaseWidget):
                 self._axis_hw_type.value = type(axis).__name__
 
                 # Update the minimum box
-                self._min.visible = True
+                if not self._min.visible:
+                    self._min.visible = True
                 self._min.label = "Minimum ({})".format(axis.get_units())
                 self._min.value = axis.get_min()
 
                 # Update the maximum box
-                self._max.visible = True
+                if not self._max.visible:
+                    self._max.visible = True
                 self._max.label = "Maximum ({})".format(axis.get_units())
                 self._max.value = axis.get_max()
 
                 # Update the norm_minimum box
-                self._norm_min.visible = True
-                self._norm_min.label = "Norm. Min ({})".format(
+                if not self._norm_min.visible:
+                    self._norm_min.visible = True
+                self._norm_min.label = "  0% ({})".format(
                     axis.get_units())
-                self._norm_min.value = axis.get_min()
+                self._norm_min.value = axis.get_norm_min()
 
                 # Update the norm_maximum box
-                self._norm_max.visible = True
-                self._norm_max.label = "Norm. Max ({})".format(
+                if not self._norm_max.visible:
+                    self._norm_max.visible = True
+                self._norm_max.label = "100% ({})".format(
                     axis.get_units())
-                self._norm_max.value = axis.get_max()
+                self._norm_max.value = axis.get_norm_max()
 
                 # Populate the special axis combo
                 special_axis = ControlCombo(label="Special Axis")
@@ -151,8 +155,12 @@ class AxisTab(BaseWidget):
                     """
                     if special_axis.value == 'xaxis':
                         self._xaxis = axis
+                        if self._yaxis == axis:
+                            self._yaxis = None
                     elif special_axis.value == 'yaxis':
                         self._yaxis = axis
+                        if self._xaxis == axis:
+                            self._xaxis = None
                     else:
                         if self._xaxis == axis:
                             self._xaxis = None
@@ -161,8 +169,10 @@ class AxisTab(BaseWidget):
 
                     self._send_events()
 
+                print("Making Special Combo")
                 special_axis.current_index_changed_event = axis_changed
 
+                self._special_axis.value = None
                 self._special_axis.value = special_axis
 
                 # Update the custom config GUI
@@ -194,7 +204,7 @@ class AxisTab(BaseWidget):
                 {'axis': self._axis, 'xaxis': self._xaxis, 'yaxis': self._yaxis})
 
     def update_events(self, events):
-        print("Axis Tab", events)
+        #print("Axis Tab", events)
         for axis in self._axis:
             if isinstance(axis, ControlAxis):
                 axis.update_events(events)
@@ -240,7 +250,7 @@ class AxisTab(BaseWidget):
             axis = self._axis[row]
             if not axis is None:
                 axis.set_name(item)
-                self._update_shown_axis()
+                #self._update_shown_axis()
                 self._send_events()
 
     def _on_min_changed(self):
@@ -316,7 +326,7 @@ class AxisTab(BaseWidget):
 
                 self.add_axis(axis)
 
-                self._update_shown_axis()
+                #self._update_shown_axis()
 
                 if 'min' in data:
                     self._min.load_form(data['min'])
@@ -337,7 +347,7 @@ class AxisTab(BaseWidget):
 
                 if 'axis-specific' in data and self._axis_custom.value is not None:
                     self._axis_custom.value.load_form(data['axis-specific'])
-                
+
     def _on_save_axis(self):
         """
         Save an axis to a file
@@ -369,9 +379,11 @@ class AxisTab(BaseWidget):
 
         print(data)
 
-        filename = QFileDialog.getSaveFileName(self, 'Save Axis', filter = 'JSON Files (*.json)')
-        with open(filename[0], 'w') as output_file:
-            json.dump(data, output_file, indent=2)
+        filename = QFileDialog.getSaveFileName(
+            self, 'Save Axis', filter='JSON Files (*.json)')
+        if filename[0] is not None and filename[0] != ''"
+            with open(filename[0], 'w') as output_file:
+                json.dump(data, output_file, indent=2)
 
 
 class NewAxisWindow(BaseWidget):

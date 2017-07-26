@@ -50,7 +50,7 @@ class SensorTab(BaseWidget):
         else:
             self._sensor = None
             self._custom.value = None
-            print("Not Subclass")
+            #print("Not Subclass")
 
         if callable(self._update_function):
             self._update_function({'sensor': self._sensor})
