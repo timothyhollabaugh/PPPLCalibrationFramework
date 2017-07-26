@@ -198,8 +198,8 @@ class Laser:
 
         if time.time() - self.last_write > self.delay:
             if self.frequency > 0:
-                amplitude = self.power * (self.high_signal - self.low_signal) / 2
-                offset = amplitude / 2 + self.low_signal
+                amplitude = self.power * (self.high_signal - self.low_signal) * 2
+                offset = self.low_signal
                 self.signal_resource.write(
                     "SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(self.frequency, amplitude, offset))
             else:
