@@ -184,7 +184,7 @@ class CameraSensor(Sensor):
 
     def begin_measuring(self):
         self._power = 0
-        if not self._camera_window.visible:
+        if self._camera_window is None or not self._camera_window.visible:
             self._show_camera()
         self._start_time = time.time()
 

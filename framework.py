@@ -193,7 +193,7 @@ class ControlAxis(ABC):
         Resovle a point in the form of a number, percent, or saved point into an actual point value
         """
 
-        print(value)
+        #print(value)
 
         working_value = str(value)
         done_value = None
@@ -202,7 +202,7 @@ class ControlAxis(ABC):
 
         try:
             # Try to convert to number immediately
-            print("Trying to convert", working_value, "to float")
+            #print("Trying to convert", working_value, "to float")
 
             done_value = float(working_value)
 
@@ -216,10 +216,10 @@ class ControlAxis(ABC):
             # Resolve saved points to values
             if working_value in self._saved_points:
                 working_value = self._saved_points[working_value]
-                print("Resolved to saved point")
+                #print("Resolved to saved point")
 
             try:
-                print("Trying again to convert", working_value, "to float")
+                #print("Trying again to convert", working_value, "to float")
 
                 if working_value.endswith('%'):
                     # Percent value
@@ -230,7 +230,7 @@ class ControlAxis(ABC):
                     done_value = float(working_value)
 
             except ValueError:
-                print("Could not convert", value, "to float")
+                #print("Could not convert", value, "to float")
                 return
             
 
@@ -412,7 +412,7 @@ class AxisController:
             headers.append(axis)
 
         if isinstance(self._sensor, Sensor):
-            headers.extend(self._sensor.get_headers)
+            headers.extend(self._sensor.get_headers())
 
         if isinstance(self._lightsource, LightSource):
             headers.append("Light Source Enabled")
@@ -473,10 +473,7 @@ class AxisController:
             for axis in self._axis:
                 if len(axis.points) > self._step:
                     value = axis.points[self._step]
-                    if isinstance(value, float):
-                        axis.goto_value(axis.points[value])
-                    elif self._saved_points is not None and value in self._saved_points:
-                        axis.goto_value(self._saved_points[value])
+                    axis.goto_value(value)
                     done = False
 
             if done:
