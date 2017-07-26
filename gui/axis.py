@@ -381,7 +381,7 @@ class AxisTab(BaseWidget):
 
         filename = QFileDialog.getSaveFileName(
             self, 'Save Axis', filter='JSON Files (*.json)')
-        if filename[0] is not None and filename[0] != ''"
+        if filename[0] is not None and filename[0] != '':
             with open(filename[0], 'w') as output_file:
                 json.dump(data, output_file, indent=2)
 
