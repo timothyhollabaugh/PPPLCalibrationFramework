@@ -37,13 +37,6 @@ class ThreadedCameraSensor(Sensor):
         # Begin making the GUI shown when this sensor is selected
         self._widget = BaseWidget()
 
-        self._widget.measure_time = ControlNumber(
-            label="Measure Time (s)",
-            default=1,
-            minimum=0,
-            maximum=float('inf'),
-            decimals=5
-        )
 
         self._widget.threshold = ControlSlider(
             label="Threshold",

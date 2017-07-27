@@ -52,6 +52,14 @@ class PointsTab(BaseWidget):
             decimals=5
         )
 
+        self._measure_time = ControlNumber(
+            label="Measure Time (s)",
+            default=1,
+            minimum=0,
+            maximum=float('inf'),
+            decimals=5
+        )
+
         self._post_delay_time = ControlNumber(
             label="Post Delay Time",
             default=1,
@@ -72,7 +80,7 @@ class PointsTab(BaseWidget):
         self.formset = [
             ('_open_file', '_save_file'),
             '_points_list',
-            ('_pre_delay_time', '_post_delay_time'),
+            ('_pre_delay_time', '_measure_time', '_post_delay_time'),
             '_out_file',
             '_scan_button'
         ]
@@ -162,7 +170,7 @@ class PointsTab(BaseWidget):
         """
         if self._controller is None or self._controller.get_state() == AxisControllerState.DONE:
             self._controller = AxisController(
-                self._axis, self._sensor, self._lightsource, self._pre_delay_time.value,
+                self._axis, self._sensor, self._lightsource, self._pre_delay_time.value, self._measure_time.value,
                 self._post_delay_time.value, self._saved_points, self._out_file.value, self._update_function)
             self._controller.begin()
         else:
@@ -249,7 +257,8 @@ class PointsTab(BaseWidget):
                     print("Failed to read file")
 
     def _save_points(self):
-        points_file = QFileDialog.getSaveFileName(caption = "Save Points", filter = 'CSV Files (*.csv)')
+        points_file = QFileDialog.getSaveFileName(
+            caption="Save Points", filter='CSV Files (*.csv)')
         print(points_file)
 
         out_points = []
