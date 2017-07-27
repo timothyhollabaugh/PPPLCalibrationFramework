@@ -85,9 +85,7 @@ class ThreadedCameraSensor(Sensor):
         self._data = data
 
     def _update_params(self):
-        print("Beginning to send params")
         if self._camera_thread is not None and self._camera is not None:
-            print("Sending Params")
             QtCore.QMetaObject.invokeMethod(self._camera, 'update_params', Qt.Qt.QueuedConnection, 
                 QtCore.Q_ARG(int, self._widget.threshold.value), 
                 QtCore.Q_ARG(int, self._widget.min_size.value),
@@ -126,7 +124,6 @@ class ThreadedCameraSensor(Sensor):
             self._camera_window.close()
         self._camera_window = None
         if self._camera_thread is not None and self._camera is not None:
-            print("Invoking Stop Method")
             QtCore.QMetaObject.invokeMethod(
                 self._camera, 'stop', Qt.Qt.QueuedConnection)
 
@@ -208,7 +205,6 @@ class CameraThread(QObject):
 
     @QtCore.pyqtSlot()
     def start_processing(self):
-        print("Camera Starting")
         self._running = True
         self._camera = ThorlabsDCx()
         self._camera.start()
@@ -259,12 +255,6 @@ class CameraThread(QObject):
                 self._freq_start = time.time()
         self._last_on = on
 
-        frame_delta_time = time.time() - self._last_frame
-        if frame_delta_time != 0:
-            self._fps = 1 / frame_delta_time
-        else:
-            self._fps = -1
-
         self._last_frame = time.time()
 
         # Put the measured values in the upper left of the frame
@@ -274,15 +264,12 @@ class CameraThread(QObject):
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
         cv2.putText(img, "Frequency: {0}".format(self._frequency), (5, 90),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
-        cv2.putText(img, "FPS: {0}".format(self._fps), (5, 120),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
 
         self.frame_ready.emit(
-            [self._xpos, self._ypos, self._power, self._frequency, self._fps], img)
+            [self._xpos, self._ypos, self._power, self._frequency], img)
 
     @QtCore.pyqtSlot()
     def stop(self):
-        print("Camera Stopping")
         if self._timer is not None:
             self._timer.stop()
         if self._camera is not None:
@@ -290,7 +277,6 @@ class CameraThread(QObject):
 
     @QtCore.pyqtSlot(int, int, int)
     def update_params(self, threshold, min_size, sample_radius):
-        print("Reciving Params")
         self._threshold = threshold
         self._min_size = min_size
         self._sample_radius = sample_radius
