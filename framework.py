@@ -306,22 +306,24 @@ class Sensor:
 
     def update(self):
         """
-        Gets called repeatedly while scanning
+        Gets called repeatedly while measuring
         Should return the most recent measurements
         """
         return []
 
     def begin_measuring(self):
         """
-        Begin measuring during update()
+        Begin measuring
+        Gets called before measurement begins
         """
         pass
 
-    def is_done(self):
+    def finish_measuring(self):
         """
-        Returns whether the sensor is done measuring
+        Stop measuring
+        Gets called after measurement ends
         """
-        return True
+        pass
 
     def get_headers(self):
         """
@@ -363,8 +365,9 @@ class AxisController:
     _state = AxisControllerState.DONE
 
     _pre_delay = 0
+    _measure_delay = 0
     _post_delay = 0
-    _start_delay = 0
+    _delay_start_time = 0
 
     _saved_points = None
 
@@ -380,7 +383,7 @@ class AxisController:
     _total_steps = 0
     _timer = QTimer()
 
-    def __init__(self, control_axis, sensor, lightsource, pre_delay, post_delay, saved_points=None, outfile=None, update_function=None):
+    def __init__(self, control_axis, sensor, lightsource, pre_delay, measure_delay, post_delay, saved_points=None, outfile=None, update_function=None):
         """
         Creates a new Axis Controller with a list of ControlAxis to control
         :param control_axis: a list of ControlAxis in the order that they should be controlled
@@ -390,6 +393,7 @@ class AxisController:
         self._sensor = sensor
         self._lightsource = lightsource
         self._pre_delay = pre_delay
+        self._measure_delay = measure_delay
         self._post_delay = post_delay
         self._saved_points = saved_points
         self._outfile = outfile
@@ -496,13 +500,13 @@ class AxisController:
         # Begin Pre Delay
         elif self._state == AxisControllerState.BEGIN_PRE_DELAY:
             print("Pre Delay")
-            self._start_delay = time.time()
+            self._delay_start_time = time.time()
             self._set_state(AxisControllerState.WAIT_PRE_DELAY)
 
         # Wait Pre Delay
         elif self._state == AxisControllerState.WAIT_PRE_DELAY:
             print('.', end='')
-            if time.time() - self._start_delay > self._pre_delay:
+            if time.time() - self._delay_start_time > self._pre_delay:
                 print()
                 self._set_state(AxisControllerState.BEGIN_ENABLE)
 
@@ -516,15 +520,17 @@ class AxisController:
             if self._sensor is not None:
                 self._sensor.begin_measuring()
 
+            self._delay_start_time = time.time()
+
             self._set_state(AxisControllerState.WAIT_ENABLE)
 
         # Wait Measuring
         elif self._state == AxisControllerState.WAIT_ENABLE:
             print('.', end='')
 
-            if self._sensor is None or self._sensor.is_done():
-                print()
+            print()
 
+            if time.time() - self._delay_start_time > self._measure_delay:
                 self._set_state(AxisControllerState.BEGIN_POST_DELAY)
                 if self._lightsource is not None:
                     self._lightsource.set_enabled(False)
@@ -532,13 +538,13 @@ class AxisController:
         # Begin Post Delay
         elif self._state == AxisControllerState.BEGIN_POST_DELAY:
             print("Post Delay")
-            self._start_delay = time.time()
+            self._delay_start_time = time.time()
             self._set_state(AxisControllerState.WAIT_POST_DELAY)
 
         # Wait Post Delay
         elif self._state == AxisControllerState.WAIT_POST_DELAY:
             print('.', end='')
-            if time.time() - self._start_delay > self._post_delay:
+            if time.time() - self._delay_start_time > self._post_delay:
                 print()
                 self._step += 1
                 self._set_state(AxisControllerState.BEGIN_STEP)
