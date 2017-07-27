@@ -37,13 +37,13 @@ class ThreadedCameraSensor(Sensor):
         # Begin making the GUI shown when this sensor is selected
         self._widget = BaseWidget()
 
-
         self._widget.threshold = ControlSlider(
             label="Threshold",
             default=18,
             min=0,
             max=255
         )
+        self._widget.threshold.changed_event = self._update_params
 
         self._widget.min_size = ControlSlider(
             label="Minimum Size",
@@ -51,6 +51,7 @@ class ThreadedCameraSensor(Sensor):
             min=0,
             max=200,
         )
+        self._widget.min_size.changed_event = self._update_params
 
         self._widget.sample_radius = ControlSlider(
             label="Sample Radius",
@@ -58,6 +59,7 @@ class ThreadedCameraSensor(Sensor):
             min=0,
             max=200
         )
+        self._widget.sample_radius.changed_event = self._update_params
 
         self._widget.show_button = ControlButton(
             label="Show Camera"
@@ -81,6 +83,16 @@ class ThreadedCameraSensor(Sensor):
         if self._camera_window is not None:
             self._camera_window.update_frame(frame)
         self._data = data
+
+    def _update_params(self):
+        print("Beginning to send params")
+        if self._camera_thread is not None and self._camera is not None:
+            print("Sending Params")
+            QtCore.QMetaObject.invokeMethod(self._camera, 'update_params', Qt.Qt.QueuedConnection, 
+                QtCore.Q_ARG(int, self._widget.threshold.value), 
+                QtCore.Q_ARG(int, self._widget.min_size.value),
+                QtCore.Q_ARG(int, self._widget.sample_radius.value)
+            )
 
     def _show_camera(self):
         """
@@ -113,9 +125,10 @@ class ThreadedCameraSensor(Sensor):
         if isinstance(self._camera_window, CameraWindow):
             self._camera_window.close()
         self._camera_window = None
-        if self._camera_thread is not None:
+        if self._camera_thread is not None and self._camera is not None:
             print("Invoking Stop Method")
-            QtCore.QMetaObject.invokeMethod(self._camera, 'stop', Qt.Qt.QueuedConnection)
+            QtCore.QMetaObject.invokeMethod(
+                self._camera, 'stop', Qt.Qt.QueuedConnection)
 
     def begin_measuring(self):
         self._power = 0
@@ -174,7 +187,8 @@ class CameraPlayer(ControlBase):
 class CameraThread(QObject):
 
     frame_ready = QtCore.pyqtSignal(list, np.ndarray)
-    _running = False
+
+    _camera = None
 
     _last_on = 0
     _on = False
@@ -190,84 +204,96 @@ class CameraThread(QObject):
     _min_size = 50
     _sample_radius = 17
 
+    _timer = None
+
     @QtCore.pyqtSlot()
     def start_processing(self):
         print("Camera Starting")
         self._running = True
-        camera = ThorlabsDCx()
-        camera.start()
-        while self._running:
-            """
-            Get a frame from the camera and process it for position, power, and frequency,
-            then put those values on the frame
-            """
-            img = camera.acquire_image_data()
+        self._camera = ThorlabsDCx()
+        self._camera.start()
+        self._timer = QTimer()
+        self._timer.timeout.connect(self._process)
+        self._timer.start(1.0/25.0)
 
-            ret, thres = cv2.threshold(
-                img, self._threshold, 255, cv2.THRESH_BINARY)
-            _, contours, _ = cv2.findContours(
-                thres, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
+    def _process(self):
+        """
+        Get a frame from the camera and process it for position, power, and frequency,
+        then put those values on the frame
+        """
+        img = self._camera.acquire_image_data()
 
-            valid_countors = 0
-            for contour in contours:
-                x, y, w, h = cv2.boundingRect(contour)
-                if w < self._min_size or h < self._min_size:
-                    continue
-                valid_countors += 1
-                cv2.rectangle(img, (x, y), (x + w, y + h), (255, 255, 0))
+        ret, thres = cv2.threshold(
+            img, self._threshold, 255, cv2.THRESH_BINARY)
+        _, contours, _ = cv2.findContours(
+            thres, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
 
-                # Position Calculation
-                self._xpos = x + w / 2
-                self._ypos = y + h / 2
+        valid_countors = 0
+        for contour in contours:
+            x, y, w, h = cv2.boundingRect(contour)
+            if w < self._min_size or h < self._min_size:
+                continue
+            valid_countors += 1
+            cv2.rectangle(img, (x, y), (x + w, y + h), (255, 255, 0))
 
-                # Power Calculation
-                mask = np.zeros(img.shape, np.uint8)
-                cv2.circle(mask, (int(self._xpos), int(self._ypos)),
+            # Position Calculation
+            self._xpos = x + w / 2
+            self._ypos = y + h / 2
+
+            # Power Calculation
+            mask = np.zeros(img.shape, np.uint8)
+            cv2.circle(mask, (int(self._xpos), int(self._ypos)),
                         self._sample_radius, (255, 255, 255), thickness=-1)
-                self._power = cv2.mean(img, mask)[0]
+            self._power = cv2.mean(img, mask)[0]
 
-            # Draw power circle
-            cv2.circle(img, (int(self._xpos), int(self._ypos)),
+        # Draw power circle
+        cv2.circle(img, (int(self._xpos), int(self._ypos)),
                     self._sample_radius, (255, 255, 255), thickness=1)
 
-            # Frequency Calculation
-            on = valid_countors > 0
-            if on:
-                if not self._last_on:
-                    delta_time = time.time() - self._freq_start
-                    self._frequency = 1 / delta_time
-                    self._freq_start = time.time()
-            self._last_on = on
+        # Frequency Calculation
+        on = valid_countors > 0
+        if on:
+            if not self._last_on:
+                delta_time = time.time() - self._freq_start
+                self._frequency = 1 / delta_time
+                self._freq_start = time.time()
+        self._last_on = on
 
-            frame_delta_time = time.time() - self._last_frame
-            if frame_delta_time != 0:
-                self._fps = 1/frame_delta_time
-            else:
-                self._fps = -1
+        frame_delta_time = time.time() - self._last_frame
+        if frame_delta_time != 0:
+            self._fps = 1 / frame_delta_time
+        else:
+            self._fps = -1
 
-            self._last_frame = time.time()
+        self._last_frame = time.time()
 
-            # Put the measured values in the upper left of the frame
-            cv2.putText(img, "Position: ({0}, {1})".format(self._xpos, self._ypos), (5, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
-            cv2.putText(img, "Power: {0}".format(self._power), (5, 60),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
-            cv2.putText(img, "Frequency: {0}".format(self._frequency), (5, 90),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
-            cv2.putText(img, "FPS: {0}".format(self._fps), (5, 120),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
-            
-            self.frame_ready.emit([self._xpos, self._ypos, self._power, self._frequency, self._fps], img)
+        # Put the measured values in the upper left of the frame
+        cv2.putText(img, "Position: ({0}, {1})".format(self._xpos, self._ypos), (5, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
+        cv2.putText(img, "Power: {0}".format(self._power), (5, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
+        cv2.putText(img, "Frequency: {0}".format(self._frequency), (5, 90),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
+        cv2.putText(img, "FPS: {0}".format(self._fps), (5, 120),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
 
-            time.sleep(1/25)
-
-        print("Stopping Camera")
-        camera.stop()
+        self.frame_ready.emit(
+            [self._xpos, self._ypos, self._power, self._frequency, self._fps], img)
 
     @QtCore.pyqtSlot()
     def stop(self):
         print("Camera Stopping")
-        self._running = False
+        if self._timer is not None:
+            self._timer.stop()
+        if self._camera is not None:
+            self._camera.stop()
+
+    @QtCore.pyqtSlot(int, int, int)
+    def update_params(self, threshold, min_size, sample_radius):
+        print("Reciving Params")
+        self._threshold = threshold
+        self._min_size = min_size
+        self._sample_radius = sample_radius
 
 
 # Stuff for Thorlabs camera
