@@ -15,6 +15,7 @@ import laser
 # Import all subclasses of Sensor so they appear in drop downs
 import camera
 import camerathreaded
+import cameralink
 import pda36a
 
 try:

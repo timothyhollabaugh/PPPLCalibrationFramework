@@ -4,3 +4,5 @@ rbuffer.h5
 images
 *.csv
 *.json
+CameralinkThorlabs Camera
+*.png

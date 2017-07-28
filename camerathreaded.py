@@ -264,6 +264,10 @@ class CameraThread(QObject):
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
         cv2.putText(img, "Frequency: {0}".format(self._frequency), (5, 90),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), thickness=2)
+        
+        print(img.shape)
+        print(type(img))
+        print(img)
 
         self.frame_ready.emit(
             [self._xpos, self._ypos, self._power, self._frequency], img)
