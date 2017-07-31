@@ -120,7 +120,6 @@ class CameraLinkSensor(Sensor):
         Hides the camera window
         """
         print("Hiding Camera")
-        self._camera.stop()
         if isinstance(self._camera_window, CameraWindow):
             self._camera_window.close()
         self._camera_window = None
@@ -232,7 +231,11 @@ class CameraThread(QObject):
         """
         now = time.time()
         #print("Getting Frame")
-        imgorg = self._clib.pdv_wait_image(self._pdv)
+        #imgorg = self._clib.pdv_wait_image(self._pdv)
+        imggrey = self._clib.pdv_wait_image(self._pdv)
+
+        imgorg = cv2.cvtColor(imggrey, cv2.COLOR_GRAY2RGB)
+        
         #img = self._clib.pdv_image(self._pdv)
 
         #cv2.imwrite("out{}.png".format(self._frame), img)
@@ -242,7 +245,7 @@ class CameraThread(QObject):
             self._clib.pdv_timeout_restart(self._pdv, True)
             self._timeouts = timeouts
             self._recovering_timeout = True
-            print("Timeout")
+            print("Cameralink Timeout")
         elif self._recovering_timeout:
             self._clib.pdv_timeout_restart(self._pdv, True)
             self._recovering_timeout = False
@@ -256,16 +259,31 @@ class CameraThread(QObject):
         #cv2.imshow("img", img)
         #cv2.waitKey(1)
         
-        img = cv2.blur(imgorg, (7, 7))
+        img = cv2.blur(imggrey, (7, 7))
 
-        img64 = cv2.Sobel(img, cv2.CV_64F, 1, 1, ksize=5)
+        #img64 = cv2.Sobel(img, cv2.CV_64F, 1, 1, ksize=5)
         #img64 = cv2.Laplacian(img, cv2.CV_64F, ksize=5)
 
-        img = np.uint8(np.absolute(img64))
+        img64x = cv2.Sobel(img, cv2.CV_64F, 1, 0, scale=0.1, ksize=5)
+        img64y = cv2.Sobel(img, cv2.CV_64F, 0, 1, scale=0.1, ksize=5)
 
-        _, img = cv2.threshold(img, self._threshold, 255, cv2.THRESH_BINARY)
+        imgx = np.uint8(np.absolute(img64x))
+        imgy = np.uint8(np.absolute(img64y))
+
+        # cv2.imshow("x", imgx)
+        # cv2.imshow("y", imgy)
+
+        _, imgx = cv2.threshold(imgx, self._threshold, 255, cv2.THRESH_BINARY)
+        _, imgy = cv2.threshold(imgy, self._threshold, 255, cv2.THRESH_BINARY)
+        img = cv2.bitwise_or(imgx, imgy)
+
+        #img = cv2.add(imgx, imgy)
+        #_, img = cv2.threshold(img, self._threshold, 255, cv2.THRESH_BINARY)
+
         _, contours, _ = cv2.findContours(
             img, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
+
+        imgorg[...,2] = img
 
         points = []
 
@@ -273,18 +291,29 @@ class CameraThread(QObject):
             x, y, w, h = cv2.boundingRect(contour)
             if w*h < self._min_size:
                 continue
-            #cv2.rectangle(img, (x, y), (x + w, y + h), (255, 255, 0))
+            cv2.rectangle(imgorg, (x, y), (x + w, y + h), (255, 255, 0))
 
-            points.append((int(x + w/2), int(y + h/2)))
+
+            # points.append((int(x + w/2), int(y + h/2)))
+            points.extend(contour)
 
         #print(len(points))
 
         if len(points) > 0:
-            x, y, w, h = cv2.boundingRect(np.array(points))
-            cv2.rectangle(imgorg, (x, y), (x + w, y + h), (255, 255, 0))
+            nppoints = np.array(points)
+
+            x, y, w, h = cv2.boundingRect(nppoints)
+            cv2.rectangle(imgorg, (x, y), (x + w, y + h), (255, 0, 0))
 
             self._xpos = x
             self._ypos = y
+
+            self._power = cv2.contourArea(nppoints)
+        else:
+            self._xpos = 0
+            self._ypos = 0
+
+            self._power = 0
         
 
         '''

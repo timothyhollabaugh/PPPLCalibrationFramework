@@ -367,6 +367,7 @@ class AxisController:
     _pre_delay = 0
     _measure_delay = 0
     _post_delay = 0
+    _scan_frequency = 0
     _delay_start_time = 0
 
     _saved_points = None
@@ -383,7 +384,7 @@ class AxisController:
     _total_steps = 0
     _timer = QTimer()
 
-    def __init__(self, control_axis, sensor, lightsource, pre_delay, measure_delay, post_delay, saved_points=None, outfile=None, update_function=None):
+    def __init__(self, control_axis, sensor, lightsource, pre_delay, measure_delay, post_delay, scan_frequency, saved_points=None, outfile=None, update_function=None):
         """
         Creates a new Axis Controller with a list of ControlAxis to control
         :param control_axis: a list of ControlAxis in the order that they should be controlled
@@ -395,6 +396,7 @@ class AxisController:
         self._pre_delay = pre_delay
         self._measure_delay = measure_delay
         self._post_delay = post_delay
+        self._scan_frequency = scan_frequency
         self._saved_points = saved_points
         self._outfile = outfile
         self._update_function = update_function
@@ -421,9 +423,14 @@ class AxisController:
         if isinstance(self._lightsource, LightSource):
             headers.append("Light Source Enabled")
 
+        self._data = [headers]
+
         self._set_state(AxisControllerState.BEGIN_STEP)
         self._timer.timeout.connect(self._scan)
-        self._timer.start()
+        if self._scan_frequency == 0:
+            self._timer.start()
+        else:
+            self._timer.start(1000/self._scan_frequency)
 
     def stop(self):
         """

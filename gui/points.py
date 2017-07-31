@@ -45,7 +45,7 @@ class PointsTab(BaseWidget):
             axis.get_name() for axis in self._axis]
 
         self._pre_delay_time = ControlNumber(
-            label="Pre Delay Time",
+            label="Pre Delay Time (s)",
             default=1,
             minimum=0,
             maximum=float('inf'),
@@ -61,7 +61,15 @@ class PointsTab(BaseWidget):
         )
 
         self._post_delay_time = ControlNumber(
-            label="Post Delay Time",
+            label="Post Delay Time (s)",
+            default=1,
+            minimum=0,
+            maximum=float('inf'),
+            decimals=5
+        )
+
+        self._scan_frequency = ControlNumber(
+            label="Scan Frequency (Hz)",
             default=1,
             minimum=0,
             maximum=float('inf'),
@@ -80,7 +88,8 @@ class PointsTab(BaseWidget):
         self.formset = [
             ('_open_file', '_save_file'),
             '_points_list',
-            ('_pre_delay_time', '_measure_time', '_post_delay_time'),
+            ('_pre_delay_time', '_post_delay_time'),
+            ('_measure_time', '_scan_frequency'),
             '_out_file',
             '_scan_button'
         ]
@@ -171,7 +180,7 @@ class PointsTab(BaseWidget):
         if self._controller is None or self._controller.get_state() == AxisControllerState.DONE:
             self._controller = AxisController(
                 self._axis, self._sensor, self._lightsource, self._pre_delay_time.value, self._measure_time.value,
-                self._post_delay_time.value, self._saved_points, self._out_file.value, self._update_function)
+                self._post_delay_time.value, self._scan_frequency.value, self._saved_points, self._out_file.value, self._update_function)
             self._controller.begin()
         else:
             self._controller.stop()
