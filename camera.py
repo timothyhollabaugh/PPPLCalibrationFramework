@@ -26,7 +26,6 @@ class CameraSensor(Sensor):
     """
 
     _camera = None
-    _start_time = 0
 
     _widget = None
     _camera_window = None
@@ -49,14 +48,6 @@ class CameraSensor(Sensor):
 
         # Begin making the GUI shown when this sensor is selected
         self._widget = BaseWidget()
-
-        self._widget.measure_time = ControlNumber(
-            label="Measure Time (s)",
-            default=1,
-            minimum=0,
-            maximum=float('inf'),
-            decimals=5
-        )
 
         self._widget.threshold = ControlSlider(
             label="Threshold",
@@ -186,13 +177,9 @@ class CameraSensor(Sensor):
         self._power = 0
         if self._camera_window is None or not self._camera_window.visible:
             self._show_camera()
-        self._start_time = time.time()
 
     def update(self):
         return [self._xpos, self._ypos, self._power, self._frequency]
-
-    def is_done(self):
-        return time.time() - self._start_time > self._widget.measure_time.value
 
     def get_headers(self):
         return ["Camera X", "Camera Y", "Camera Power", "Camera Frequency"]
