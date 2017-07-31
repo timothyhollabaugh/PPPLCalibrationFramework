@@ -24,4 +24,4 @@ Quickly scan through multiple points along many different axis (X, Y, power, fre
 **Supported Sensors**
  - [Thorlabs PDA36A](https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=3257&pn=PDA36A#10781) Photodetector
  - [Thorlabs DCC1545M](https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=4024) Camera
- 
+ - [PCI DV C-Link](https://edt.com/product/pci-dv-c-link/) Cameralink frame grabber 
