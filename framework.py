@@ -528,9 +528,8 @@ class AxisController:
         elif self._state == AxisControllerState.WAIT_ENABLE:
             print('.', end='')
 
-            print()
-
             if time.time() - self._delay_start_time > self._measure_delay:
+                print()
                 self._set_state(AxisControllerState.BEGIN_POST_DELAY)
                 if self._lightsource is not None:
                     self._lightsource.set_enabled(False)

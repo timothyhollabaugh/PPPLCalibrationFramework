@@ -70,7 +70,7 @@ class SensorTab(BaseWidget):
                 self._sensor.begin_measuring()
                 self._output.horizontal_headers = self._sensor.get_headers()
                 self._timer.timeout.connect(self._update_sensor)
-                self._timer.start(50)
+                self._timer.start(100)
         else:
             self._timer.stop()
             if isinstance(self._sensor, Sensor):
