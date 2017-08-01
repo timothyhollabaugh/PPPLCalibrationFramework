@@ -215,8 +215,9 @@ class CameraThread(QObject):
         self._clib = ctypes.cdll.LoadLibrary('pdvlib.dll')
         self._pdv = self._clib.pdv_open(b'pdv', 0)
         self._clib.pdv_multibuf(self._pdv, 4)
-        self._clib.pdv_wait_image.restype = np.ctypeslib.ndpointer(dtype=ctypes.c_uint8, shape=(512, 640))
-        self._clib.pdv_image.restype = np.ctypeslib.ndpointer(dtype=ctypes.c_uint8, shape=(512, 640))
+
+        self._clib.pdv_wait_image.restype = np.ctypeslib.ndpointer(dtype=ctypes.c_uint16, shape=(512, 1280))
+        self._clib.pdv_image.restype = np.ctypeslib.ndpointer(dtype=ctypes.c_uint16, shape=(512, 1280))
 
         self._timer = QTimer()
         self._timer.timeout.connect(self._process)
@@ -234,11 +235,11 @@ class CameraThread(QObject):
         #imgorg = self._clib.pdv_wait_image(self._pdv)
         imggrey = self._clib.pdv_wait_image(self._pdv)
 
-        imgorg = cv2.cvtColor(imggrey, cv2.COLOR_GRAY2RGB)
-        
-        #img = self._clib.pdv_image(self._pdv)
+        imggrey = imggrey[:, ::2]
 
-        #cv2.imwrite("out{}.png".format(self._frame), img)
+        imgorg = cv2.cvtColor(imggrey, cv2.COLOR_GRAY2RGB)
+
+        cv2.imshow('imggrey', imggrey)
 
         timeouts = self._clib.pdv_timeouts(self._pdv)
         if timeouts > self._timeouts:

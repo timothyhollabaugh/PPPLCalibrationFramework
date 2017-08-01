@@ -19,14 +19,17 @@ clib.pdv_multibuf(pdv, 4)
 
 #cv2.imshow('img', img)
 #cv2.waitKey(0)
+np.set_printoptions(formatter={'int':hex})
 
-
-clib.pdv_wait_image.restype = np.ctypeslib.ndpointer(dtype=ctypes.c_uint8, shape=(512, 640, 1))
+clib.pdv_wait_image.restype = np.ctypeslib.ndpointer(dtype=ctypes.c_uint16, shape=(512, 1280, 1))
 
 clib.pdv_start_images(pdv, 0)
 
 while True:
     img = clib.pdv_wait_image(pdv)
+    img = img[:, ::2]
+    img = np.left_shift(img, 2)
+    #print(img)
     cv2.imshow('img', img)
     if cv2.waitKey(1) == 27:
         break  # esc to quit
