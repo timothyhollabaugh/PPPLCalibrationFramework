@@ -54,13 +54,13 @@ class CameraLinkSensor(Sensor):
         )
         self._widget.min_size.changed_event = self._update_params
 
-        self._widget.sample_radius = ControlSlider(
-            label="Sample Radius",
+        self._widget.on_threshold = ControlSlider(
+            label="Frequency Threshold",
             default=17,
             min=0,
-            max=200
+            max=255
         )
-        self._widget.sample_radius.changed_event = self._update_params
+        self._widget.on_threshold.changed_event = self._update_params
 
         self._widget.x_bounds = ControlBoundingSlider(
             label="X Bounds",
@@ -113,7 +113,7 @@ class CameraLinkSensor(Sensor):
                                             QtCore.Q_ARG(
                                                 int, self._widget.min_size.value),
                                             QtCore.Q_ARG(
-                                                int, self._widget.sample_radius.value),
+                                                int, self._widget.on_threshold.value),
                                             QtCore.Q_ARG(
                                                 int, self._widget.x_bounds.value[0]),
                                             QtCore.Q_ARG(
@@ -231,12 +231,17 @@ class CameraThread(QObject):
     _xpos = 0
     _ypos = 0
 
+    _on = False
+    _last_on = False
+
+    _cycle_start = 0
+
     _timeouts = 0
     _recovering_timeout = False
 
     _threshold = 18
     _min_size = 50
-    _sample_radius = 17
+    _on_threshold = 17
     _x_min = 0
     _x_max = 640
     _y_min = 0
@@ -378,6 +383,16 @@ class CameraThread(QObject):
 
             self._power = 0
 
+        self._on = self._power > self._on_threshold
+
+        if self._on and not self._last_on:
+            delta_time = now - self._cycle_start
+            if delta_time != 0:
+                self._frequency = 1/delta_time
+                self._cycle_start = now
+
+        self._last_on = self._on
+
         '''
         # Put the measured values in the upper left of the frame
         cv2.putText(img, "Position: ({0}, {1})".format(self._xpos, self._ypos), (5, 15),
@@ -404,10 +419,10 @@ class CameraThread(QObject):
             self._timer.stop()
 
     @QtCore.pyqtSlot(int, int, int, int, int, int, int)
-    def update_params(self, threshold, min_size, sample_radius, x_min, x_max, y_min, y_max):
+    def update_params(self, threshold, min_size, on_threshold, x_min, x_max, y_min, y_max):
         self._threshold = threshold
         self._min_size = min_size
-        self._sample_radius = sample_radius
+        self._on_threshold = on_threshold
         self._x_min = x_min
         self._x_max = x_max
         self._y_min = y_min
