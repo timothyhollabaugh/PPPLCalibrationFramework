@@ -11,7 +11,7 @@ from PyQt5 import Qt
 from PyQt5.QtCore import QTimer, QObject, QThread
 
 from pyforms import BaseWidget
-from pyforms.Controls import ControlNumber, ControlPlayer, ControlDockWidget, ControlBase, ControlButton, ControlLabel, ControlSlider
+from pyforms.Controls import ControlNumber, ControlPlayer, ControlDockWidget, ControlBase, ControlButton, ControlLabel, ControlSlider, ControlBoundingSlider
 from pyforms.gui.Controls.ControlPlayer.VideoGLWidget import VideoGLWidget
 
 import cv2
@@ -62,6 +62,26 @@ class CameraLinkSensor(Sensor):
         )
         self._widget.sample_radius.changed_event = self._update_params
 
+        self._widget.x_bounds = ControlBoundingSlider(
+            label="X Bounds",
+            default=[0, 640],
+            min=0,
+            max=640,
+            horizontal=True
+        )
+        self._widget.x_bounds.convert_2_int = True
+        self._widget.x_bounds.changed_event = self._update_params
+
+        self._widget.y_bounds = ControlBoundingSlider(
+            label="Y Bounds",
+            default=[0, 512],
+            min=0,
+            max=512,
+            horizontal=True
+        )
+        self._widget.y_bounds.convert_2_int = True
+        self._widget.y_bounds.changed_event = self._update_params
+
         self._widget.show_button = ControlButton(
             label="Show Camera"
         )
@@ -87,11 +107,22 @@ class CameraLinkSensor(Sensor):
 
     def _update_params(self):
         if self._camera_thread is not None and self._camera is not None:
-            QtCore.QMetaObject.invokeMethod(self._camera, 'update_params', Qt.Qt.QueuedConnection, 
-                QtCore.Q_ARG(int, self._widget.threshold.value), 
-                QtCore.Q_ARG(int, self._widget.min_size.value),
-                QtCore.Q_ARG(int, self._widget.sample_radius.value)
-            )
+            QtCore.QMetaObject.invokeMethod(self._camera, 'update_params', Qt.Qt.QueuedConnection,
+                                            QtCore.Q_ARG(
+                                                int, self._widget.threshold.value),
+                                            QtCore.Q_ARG(
+                                                int, self._widget.min_size.value),
+                                            QtCore.Q_ARG(
+                                                int, self._widget.sample_radius.value),
+                                            QtCore.Q_ARG(
+                                                int, self._widget.x_bounds.value[0]),
+                                            QtCore.Q_ARG(
+                                                int, self._widget.x_bounds.value[1]),
+                                            QtCore.Q_ARG(
+                                                int, self._widget.y_bounds.value[0]),
+                                            QtCore.Q_ARG(
+                                                int, self._widget.y_bounds.value[1]),
+                                            )
 
     def _show_camera(self):
         """
@@ -206,6 +237,10 @@ class CameraThread(QObject):
     _threshold = 18
     _min_size = 50
     _sample_radius = 17
+    _x_min = 0
+    _x_max = 640
+    _y_min = 0
+    _y_max = 512
 
     _timer = None
 
@@ -216,8 +251,10 @@ class CameraThread(QObject):
         self._pdv = self._clib.pdv_open(b'pdv', 0)
         self._clib.pdv_multibuf(self._pdv, 4)
 
-        self._clib.pdv_wait_image.restype = np.ctypeslib.ndpointer(dtype=ctypes.c_uint16, shape=(512, 1280))
-        self._clib.pdv_image.restype = np.ctypeslib.ndpointer(dtype=ctypes.c_uint16, shape=(512, 1280))
+        self._clib.pdv_wait_image.restype = np.ctypeslib.ndpointer(
+            dtype=ctypes.c_uint16, shape=(512, 1280))
+        self._clib.pdv_image.restype = np.ctypeslib.ndpointer(
+            dtype=ctypes.c_uint16, shape=(512, 1280))
 
         self._timer = QTimer()
         self._timer.timeout.connect(self._process)
@@ -239,7 +276,7 @@ class CameraThread(QObject):
 
         imgorg = cv2.cvtColor(imggrey, cv2.COLOR_GRAY2RGB)
 
-        cv2.imshow('imggrey', imggrey)
+        #cv2.imshow('imggrey', imggrey)
 
         timeouts = self._clib.pdv_timeouts(self._pdv)
         if timeouts > self._timeouts:
@@ -258,9 +295,26 @@ class CameraThread(QObject):
         self._last_frame = now
 
         #cv2.imshow("img", img)
-        #cv2.waitKey(1)
-        
-        img = cv2.blur(imggrey, (7, 7))
+        # cv2.waitKey(1)
+
+        if self._x_max - self._x_min <= 0:
+            if self._x_max < 640:
+                self._x_max += 1
+            if self._x_min > 0:
+                self._x_min -= 1
+
+        if self._y_max - self._y_min <= 0:
+            if self._y_max < 512:
+                self._y_max += 1
+            if self._y_min > 0:
+                self._y_min -= 1
+
+        cv2.rectangle(imgorg, (self._x_min, self._y_min),
+                      (self._x_max, self._y_max), (0, 0, 255))
+
+        img = imggrey[self._y_min:self._y_max, self._x_min:self._x_max]
+
+        img = cv2.blur(img, (7, 7))
 
         #img64 = cv2.Sobel(img, cv2.CV_64F, 1, 1, ksize=5)
         #img64 = cv2.Laplacian(img, cv2.CV_64F, ksize=5)
@@ -284,26 +338,34 @@ class CameraThread(QObject):
         _, contours, _ = cv2.findContours(
             img, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
 
-        imgorg[...,2] = img
+        imgorg[self._y_min:self._y_max, self._x_min:self._x_max, 2] = img
 
         points = []
 
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
-            if w*h < self._min_size:
-                continue
-            cv2.rectangle(imgorg, (x, y), (x + w, y + h), (255, 255, 0))
 
+            if w * h < self._min_size:
+                continue
+
+            x += self._x_min
+            y += self._y_min
+
+            cv2.rectangle(imgorg, (x, y), (x + w, y + h), (255, 255, 0))
 
             # points.append((int(x + w/2), int(y + h/2)))
             points.extend(contour)
 
-        #print(len(points))
+        # print(len(points))
 
         if len(points) > 0:
             nppoints = np.array(points)
 
             x, y, w, h = cv2.boundingRect(nppoints)
+
+            x += self._x_min
+            y += self._y_min
+
             cv2.rectangle(imgorg, (x, y), (x + w, y + h), (255, 0, 0))
 
             self._xpos = x
@@ -315,7 +377,6 @@ class CameraThread(QObject):
             self._ypos = 0
 
             self._power = 0
-        
 
         '''
         # Put the measured values in the upper left of the frame
@@ -342,8 +403,12 @@ class CameraThread(QObject):
         if self._timer is not None:
             self._timer.stop()
 
-    @QtCore.pyqtSlot(int, int, int)
-    def update_params(self, threshold, min_size, sample_radius):
+    @QtCore.pyqtSlot(int, int, int, int, int, int, int)
+    def update_params(self, threshold, min_size, sample_radius, x_min, x_max, y_min, y_max):
         self._threshold = threshold
         self._min_size = min_size
         self._sample_radius = sample_radius
+        self._x_min = x_min
+        self._x_max = x_max
+        self._y_min = y_min
+        self._y_max = y_max
