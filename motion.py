@@ -141,8 +141,8 @@ class RotateAxis(ControlAxis):
 
     _rotation_stage = None
 
-    _distance_to_surface = 576.2625
-    _ticks_to_level = 8.1
+    _distance_to_surface = 344.5
+    _ticks_to_level = 7.82
     _ticks_per_revolution = 66
 
     _widget = None
