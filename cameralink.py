@@ -295,7 +295,6 @@ class CameraThread(QObject):
 
         imggrey = imggrey[:, ::2]
         
-        print(self._recording)
         if self._recording and self._save_dir is not None and self._save_dir != '':
             imgsave = np.uint8(imggrey)
             print(imgsave.dtype)
