@@ -2,6 +2,7 @@
 The framework for stepping and scanning axis and measuring the sensor values
 """
 
+import os
 import time
 import csv
 from enum import Enum, auto
@@ -311,7 +312,7 @@ class Sensor:
         """
         return []
 
-    def begin_measuring(self):
+    def begin_measuring(self, save_dir):
         """
         Begin measuring
         Gets called before measurement begins
@@ -350,6 +351,7 @@ class AxisControllerState(Enum):
     WAIT_PRE_DELAY = 'waitpredelay'
     BEGIN_POST_DELAY = 'beginpostdelay'
     WAIT_POST_DELAY = 'waitpostdelay'
+    NEXT_STEP = 'nextstep'
     DONE = 'done'
 
 
@@ -373,10 +375,12 @@ class AxisController:
     _saved_points = None
 
     _data = []
+    _step_data = []
 
     _measuring = False
 
     _outfile = None
+    _step_file = None
 
     _update_function = None
 
@@ -415,13 +419,10 @@ class AxisController:
         headers.append("Time")
 
         for axis in self._axis:
-            headers.append(axis)
+            if isinstance(axis, ControlAxis):
+                headers.append(axis.get_name())
 
-        if isinstance(self._sensor, Sensor):
-            headers.extend(self._sensor.get_headers())
-
-        if isinstance(self._lightsource, LightSource):
-            headers.append("Light Source Enabled")
+        headers.append("Folder Number")
 
         self._data = [headers]
 
@@ -437,6 +438,11 @@ class AxisController:
         Stops the current scan
         """
         self._timer.stop()
+
+        if self._state == AxisControllerState.BEGIN_ENABLE or self._state == AxisControllerState.WAIT_ENABLE:
+            if isinstance(self._sensor, Sensor):
+                self._sensor.finish_measuring()
+
         self._set_state(AxisControllerState.DONE)
         if self._lightsource is not None:
             self._lightsource.set_enabled(False)
@@ -466,8 +472,6 @@ class AxisController:
                 or self._state == AxisControllerState.BEGIN_POST_DELAY
                 or self._state == AxisControllerState.WAIT_POST_DELAY):
             datarow = [float(time.time())]
-            for axis in self._axis:
-                datarow.append(axis.get_current_value())
 
             if self._sensor is not None:
                 datarow += self._sensor.update()
@@ -475,11 +479,12 @@ class AxisController:
             if self._lightsource is not None:
                 datarow += [1.0] if self._lightsource.get_enabled() else [0.0]
 
-            self._data.append(datarow)
+            self._step_data.append(datarow)
 
         # Begin Step
         if self._state == AxisControllerState.BEGIN_STEP:
             print("Moving to step:", self._step)
+
             done = True
             for axis in self._axis:
                 if len(axis.points) > self._step:
@@ -491,6 +496,27 @@ class AxisController:
                 self._set_state(AxisControllerState.DONE)
             else:
                 self._set_state(AxisControllerState.WAIT_STEP)
+
+                # Reset the per step data
+                headers = []
+                headers.append("Time")
+                if isinstance(self._sensor, Sensor):
+                    headers.extend(self._sensor.get_headers())
+                if isinstance(self._lightsource, LightSource):
+                    headers.append("Light Source Enabled")
+                self._step_data = [headers]
+
+                # Deal with directories
+                if self._outfile is not None and self._outfile is not '':
+                    self._step_file = "{}/{}".format(self._outfile, self._step)
+
+                    # Make the directory for this step
+                    if not os.path.exists(self._step_file):
+                        print("Making dir for step")
+                        print(self._step_file)
+                        os.makedirs(self._step_file) 
+                else:
+                    self._step_file = None
 
         # Wait Step
         elif self._state == AxisControllerState.WAIT_STEP:
@@ -525,7 +551,7 @@ class AxisController:
                 self._lightsource.set_enabled(True)
 
             if self._sensor is not None:
-                self._sensor.begin_measuring()
+                self._sensor.begin_measuring(self._step_file)
 
             self._delay_start_time = time.time()
 
@@ -552,14 +578,35 @@ class AxisController:
             print('.', end='')
             if time.time() - self._delay_start_time > self._post_delay:
                 print()
-                self._step += 1
-                self._set_state(AxisControllerState.BEGIN_STEP)
+                self._set_state(AxisControllerState.NEXT_STEP)
 
+        # Next Step
+        elif self._state == AxisControllerState.NEXT_STEP:
+            print("Saving Data")
+
+            if self._step_file is not None and self._step_file != '':
+                # Write the step data to csv
+                with open("{}/data.csv".format(self._step_file), 'w', newline='') as csvfile:
+                    csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+                    csvwriter.writerows(self._step_data)
+
+            # Put data in the per scan data
+            step_meta = [float(time.time())]
+            for axis in self._axis:
+                step_meta.append(axis.get_current_value())
+            step_meta.append(self._step)
+            self._data.append(step_meta)
+
+            # Increase the step and move on
+            self._step += 1
+            self._state = AxisControllerState.BEGIN_STEP
+
+        # Done
         elif self._state == AxisControllerState.DONE:
             print("Done.")
 
             if self._outfile is not None and self._outfile is not '':
-                with open(self._outfile, 'w', newline='') as csvfile:
+                with open("{}/data.csv".format(self._outfile), 'w', newline='') as csvfile:
                     csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
                     csvwriter.writerows(self._data)
 

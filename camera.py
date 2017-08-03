@@ -173,7 +173,7 @@ class CameraSensor(Sensor):
         if self._camera_window is not None:
             self._camera_window.update_frame(img)
 
-    def begin_measuring(self):
+    def begin_measuring(self, save_dir):
         self._power = 0
         if self._camera_window is None or not self._camera_window.visible:
             self._show_camera()

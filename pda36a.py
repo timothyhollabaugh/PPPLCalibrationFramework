@@ -75,7 +75,7 @@ class PDA36A(Sensor):
             self._last_on = on
         return [self._power, self._frequency]
 
-    def begin_measuring(self):
+    def begin_measuring(self, save_dir):
         pass
 
     def get_headers(self):

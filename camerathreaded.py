@@ -127,7 +127,7 @@ class ThreadedCameraSensor(Sensor):
             QtCore.QMetaObject.invokeMethod(
                 self._camera, 'stop', Qt.Qt.QueuedConnection)
 
-    def begin_measuring(self):
+    def begin_measuring(self, save_dir):
         self._power = 0
         if self._camera_window is None or not self._camera_window.visible:
             self._show_camera()

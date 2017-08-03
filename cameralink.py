@@ -31,6 +31,7 @@ class CameraLinkSensor(Sensor):
 
     _widget = None
     _camera_window = None
+    _save_dir = ''
 
     _data = []
 
@@ -87,11 +88,6 @@ class CameraLinkSensor(Sensor):
         )
         self._widget.recording.changed_event = self._update_params
 
-        self._widget.save_dir = ControlDir(
-            label="Record Directory"
-        )
-        self._widget.save_dir.changed_event = self._update_params
-
         self._widget.show_button = ControlButton(
             label="Show Camera"
         )
@@ -133,7 +129,7 @@ class CameraLinkSensor(Sensor):
                                             QtCore.Q_ARG(
                                                 int, self._widget.y_bounds.value[1]),
                                             QtCore.Q_ARG(
-                                                str, self._widget.save_dir.value),
+                                                str, self._save_dir),
                                             QtCore.Q_ARG(
                                                 bool, self._widget.recording.value),
                                             )
@@ -173,16 +169,20 @@ class CameraLinkSensor(Sensor):
             QtCore.QMetaObject.invokeMethod(
                 self._camera, 'stop', Qt.Qt.QueuedConnection)
 
-    def begin_measuring(self):
+    def begin_measuring(self, save_dir):
+        print("Camera Beginning")
         self._power = 0
         if self._camera_window is None or not self._camera_window.visible:
             self._show_camera()
+        self._save_dir = save_dir
+        self._update_params()
 
     def update(self):
         return self._data
 
     def finish_measuring(self):
-        pass
+        self._save_dir = None
+        self._update_params()
 
     def get_headers(self):
         return ["Camera X", "Camera Y", "Camera Power", "Camera Frequency", "Camera FPS", "Camera Frame"]
