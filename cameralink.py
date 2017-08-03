@@ -11,7 +11,7 @@ from PyQt5 import Qt
 from PyQt5.QtCore import QTimer, QObject, QThread
 
 from pyforms import BaseWidget
-from pyforms.Controls import ControlNumber, ControlPlayer, ControlDockWidget, ControlBase, ControlButton, ControlLabel, ControlSlider, ControlBoundingSlider
+from pyforms.Controls import ControlNumber, ControlPlayer, ControlDockWidget, ControlBase, ControlButton, ControlLabel, ControlSlider, ControlBoundingSlider, ControlDir, ControlCheckBox
 from pyforms.gui.Controls.ControlPlayer.VideoGLWidget import VideoGLWidget
 
 import cv2
@@ -82,6 +82,16 @@ class CameraLinkSensor(Sensor):
         self._widget.y_bounds.convert_2_int = True
         self._widget.y_bounds.changed_event = self._update_params
 
+        self._widget.recording = ControlCheckBox(
+            label="Record"
+        )
+        self._widget.recording.changed_event = self._update_params
+
+        self._widget.save_dir = ControlDir(
+            label="Record Directory"
+        )
+        self._widget.save_dir.changed_event = self._update_params
+
         self._widget.show_button = ControlButton(
             label="Show Camera"
         )
@@ -122,6 +132,10 @@ class CameraLinkSensor(Sensor):
                                                 int, self._widget.y_bounds.value[0]),
                                             QtCore.Q_ARG(
                                                 int, self._widget.y_bounds.value[1]),
+                                            QtCore.Q_ARG(
+                                                str, self._widget.save_dir.value),
+                                            QtCore.Q_ARG(
+                                                bool, self._widget.recording.value),
                                             )
 
     def _show_camera(self):
@@ -145,6 +159,7 @@ class CameraLinkSensor(Sensor):
             self._camera_thread.started.connect(self._camera.start_processing)
 
         self._camera_thread.start()
+        self._update_params()
 
     def _hide_camera(self):
         """
@@ -170,7 +185,7 @@ class CameraLinkSensor(Sensor):
         pass
 
     def get_headers(self):
-        return ["Camera X", "Camera Y", "Camera Power", "Camera Frequency", "Camera FPS"]
+        return ["Camera X", "Camera Y", "Camera Power", "Camera Frequency", "Camera FPS", "Camera Frame"]
 
 
 class CameraWindow(BaseWidget):
@@ -246,6 +261,8 @@ class CameraThread(QObject):
     _x_max = 640
     _y_min = 0
     _y_max = 512
+    _save_dir = ''
+    _recording = False
 
     _timer = None
 
@@ -273,11 +290,18 @@ class CameraThread(QObject):
         then put those values on the frame
         """
         now = time.time()
-        #print("Getting Frame")
-        #imgorg = self._clib.pdv_wait_image(self._pdv)
+
         imggrey = self._clib.pdv_wait_image(self._pdv)
 
         imggrey = imggrey[:, ::2]
+        
+        print(self._recording)
+        if self._recording and self._save_dir is not None and self._save_dir != '':
+            imgsave = np.uint8(imggrey)
+            print(imgsave.dtype)
+            print(imgsave.shape)
+            cv2.imwrite("{}/{}.png".format(self._save_dir, self._frame), imgsave)
+            cv2.imshow('saved', imgsave)
 
         imgorg = cv2.cvtColor(imggrey, cv2.COLOR_GRAY2RGB)
 
@@ -299,9 +323,6 @@ class CameraThread(QObject):
 
         self._last_frame = now
 
-        #cv2.imshow("img", img)
-        # cv2.waitKey(1)
-
         if self._x_max - self._x_min <= 0:
             if self._x_max < 640:
                 self._x_max += 1
@@ -319,31 +340,16 @@ class CameraThread(QObject):
 
         img = imggrey[self._y_min:self._y_max, self._x_min:self._x_max]
 
-        img = cv2.blur(img, (7, 7))
+        img = np.uint8(img)
 
-        #img64 = cv2.Sobel(img, cv2.CV_64F, 1, 1, ksize=5)
-        #img64 = cv2.Laplacian(img, cv2.CV_64F, ksize=5)
+        self._power = int(np.amax(img))
 
-        img64x = cv2.Sobel(img, cv2.CV_64F, 1, 0, scale=0.1, ksize=5)
-        img64y = cv2.Sobel(img, cv2.CV_64F, 0, 1, scale=0.1, ksize=5)
-
-        imgx = np.uint8(np.absolute(img64x))
-        imgy = np.uint8(np.absolute(img64y))
-
-        # cv2.imshow("x", imgx)
-        # cv2.imshow("y", imgy)
-
-        _, imgx = cv2.threshold(imgx, self._threshold, 255, cv2.THRESH_BINARY)
-        _, imgy = cv2.threshold(imgy, self._threshold, 255, cv2.THRESH_BINARY)
-        img = cv2.bitwise_or(imgx, imgy)
-
-        #img = cv2.add(imgx, imgy)
-        #_, img = cv2.threshold(img, self._threshold, 255, cv2.THRESH_BINARY)
+        _, img = cv2.threshold(img, self._threshold, 255, cv2.THRESH_BINARY)
 
         _, contours, _ = cv2.findContours(
             img, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
 
-        imgorg[self._y_min:self._y_max, self._x_min:self._x_max, 2] = img
+        #imgorg[self._y_min:self._y_max, self._x_min:self._x_max, 2] = img
 
         points = []
 
@@ -376,7 +382,7 @@ class CameraThread(QObject):
             self._xpos = x
             self._ypos = y
 
-            self._power = cv2.contourArea(nppoints)
+            #self._power = cv2.contourArea(nppoints)
         else:
             self._xpos = 0
             self._ypos = 0
@@ -408,7 +414,7 @@ class CameraThread(QObject):
         '''
 
         self.frame_ready.emit(
-            [self._xpos, self._ypos, self._power, self._frequency, self._fps], imgorg)
+            [self._xpos, self._ypos, self._power, self._frequency, self._fps, self._frame], imgorg)
 
         self._frame += 1
 
@@ -418,8 +424,8 @@ class CameraThread(QObject):
         if self._timer is not None:
             self._timer.stop()
 
-    @QtCore.pyqtSlot(int, int, int, int, int, int, int)
-    def update_params(self, threshold, min_size, on_threshold, x_min, x_max, y_min, y_max):
+    @QtCore.pyqtSlot(int, int, int, int, int, int, int, str, bool)
+    def update_params(self, threshold, min_size, on_threshold, x_min, x_max, y_min, y_max, save_dir, recording):
         self._threshold = threshold
         self._min_size = min_size
         self._on_threshold = on_threshold
@@ -427,3 +433,5 @@ class CameraThread(QObject):
         self._x_max = x_max
         self._y_min = y_min
         self._y_max = y_max
+        self._save_dir = save_dir
+        self._recording = recording

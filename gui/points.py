@@ -80,6 +80,11 @@ class PointsTab(BaseWidget):
             label="Output File: "
         )
 
+        self._out_file_button  = ControlButton(
+            label="Select"
+        )
+        self._out_file_button.value = self._on_out_select
+
         self._scan_button = ControlButton(
             label="Scan"
         )
@@ -90,8 +95,9 @@ class PointsTab(BaseWidget):
             '_points_list',
             ('_pre_delay_time', '_post_delay_time'),
             ('_measure_time', '_scan_frequency'),
-            '_out_file',
-            '_scan_button'
+            ('_out_file', '_out_file_button'),
+            '_scan_button',
+            'info:(Output file will not be written until scan completes)',
         ]
 
     def update_events(self, events):
@@ -172,6 +178,11 @@ class PointsTab(BaseWidget):
                 self._axis[col].points[row] = float(item)
             except ValueError:
                 self._axis[col].points[row] = item
+
+    def _on_out_select(self):
+        filename = QFileDialog.getSaveFileName(
+            self, 'Output File', filter='CSV Files (*.csv)')
+        self._out_file.value = filename[0]
 
     def _begin_scan(self):
         """
