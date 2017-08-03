@@ -155,6 +155,10 @@ class Laser:
     delay = 0.01
     last_write = 0
 
+    # Whether to use the external trigger to ensure outpout is synced
+    # Requires wiring the power supply output to the external trigger port of the AFG
+    _ext_trigger = True
+
     def __init__(self, power_resource, power_channel, signal_resource):
         """
         Create a Laser
@@ -198,12 +202,25 @@ class Laser:
 
         if time.time() - self.last_write > self.delay:
             if self.frequency > 0:
-                amplitude = self.power * (self.high_signal - self.low_signal) * 2
+                amplitude = self.power * \
+                    (self.high_signal - self.low_signal) * 2
                 offset = self.low_signal
-                self.signal_resource.write(
-                    "SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(self.frequency, amplitude, offset))
+
+                if self._ext_trigger:
+                    self.signal_resource.write("SOURCE1:BURST:STATE ON")
+                    self.signal_resource.write(
+                        "SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(self.frequency, amplitude, offset))
+                    self.signal_resource.write("SOURCE1:BURST:MODE GATE")
+                    self.signal_resource.write("SOURCE1:BURST:PHASE 0")
+                    self.signal_resource.write("SOURCE1:BURST:TRIGGER EXT")
+                else:
+                    self.signal_resource.write(
+                        "SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(self.frequency, amplitude, offset))
+
             else:
-                offset = self.power * (self.high_signal - self.low_signal) + self.low_signal
+                offset = self.power * \
+                    (self.high_signal - self.low_signal) + self.low_signal
+                self.signal_resource.write("SOURCE1:BURST:STATE OFF")
                 self.signal_resource.write(
                     "SOURCE1:APPLY:DC DEFAULT,DEFAULT,{0}".format(offset))
 
@@ -211,7 +228,7 @@ class Laser:
                 self.power_resource.write("OUT1")
             else:
                 self.power_resource.write("OUT0")
-        
+
             self.last_write = time.time()
 
     def set_enabled(self, enable=True):
