@@ -297,10 +297,7 @@ class CameraThread(QObject):
         
         if self._recording and self._save_dir is not None and self._save_dir != '':
             imgsave = np.uint8(imggrey)
-            print(imgsave.dtype)
-            print(imgsave.shape)
             cv2.imwrite("{}/{}.png".format(self._save_dir, self._frame), imgsave)
-            cv2.imshow('saved', imgsave)
 
         imgorg = cv2.cvtColor(imggrey, cv2.COLOR_GRAY2RGB)
 
