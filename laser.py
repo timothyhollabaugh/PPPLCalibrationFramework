@@ -207,6 +207,8 @@ class Laser:
                 offset = self.low_signal
 
                 if self._ext_trigger:
+                    self.signal_resource.write(
+                        "SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(self.frequency, amplitude, offset))
                     self.signal_resource.write("SOURCE1:BURST:STATE ON")
                     self.signal_resource.write(
                         "SOURCE1:APPLY:SQUARE {0}HZ,{1},{2}".format(self.frequency, amplitude, offset))
