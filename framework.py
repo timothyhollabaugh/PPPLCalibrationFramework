@@ -321,6 +321,30 @@ class Sensor:
         """
         pass
 
+    def begin_live_data(self):
+        """
+        Start getting live data for viewing
+        """
+        self.begin_measuring(None)
+
+    def get_live_data(self):
+        """
+        Get the live data for viewing
+        """
+        return self.update()
+
+    def stop_live_data(self):
+        """
+        Stop live data for viewing
+        """
+        self.finish_measuring()
+
+    def get_live_headers(self):
+        """
+        Gets the headers used for live data
+        """
+        return self.get_headers()
+
     def get_headers(self):
         """
         Gets the headers for the data returned
@@ -383,7 +407,8 @@ class AxisController:
     _total_steps = 0
     _timer = QTimer()
 
-    def __init__(self, control_axis, sensor, lightsource, pre_delay, measure_delay, post_delay, scan_frequency, saved_points=None, outfile=None, update_function=None):
+    def __init__(self, control_axis, sensor, lightsource, pre_delay, measure_delay, post_delay,
+                 scan_frequency, saved_points=None, outfile=None, update_function=None):
         """
         Creates a new Axis Controller with a list of ControlAxis to control
         :param control_axis: a list of ControlAxis in the order that they should be controlled
@@ -434,7 +459,8 @@ class AxisController:
         """
         self._timer.stop()
 
-        if self._state == AxisControllerState.BEGIN_ENABLE or self._state == AxisControllerState.WAIT_ENABLE:
+        if self._state == AxisControllerState.BEGIN_ENABLE \
+           or self._state == AxisControllerState.WAIT_ENABLE:
             if isinstance(self._sensor, Sensor):
                 self._sensor.finish_measuring()
 

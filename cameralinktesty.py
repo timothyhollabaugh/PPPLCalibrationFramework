@@ -28,7 +28,7 @@ clib.pdv_start_images(pdv, 0)
 while True:
     img = clib.pdv_wait_image(pdv)
     img = img[:, ::2]
-    img = np.left_shift(img, 2)
+    img = np.uint8(img)
     #print(img)
     cv2.imshow('img', img)
     if cv2.waitKey(1) == 27:
