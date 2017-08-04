@@ -238,32 +238,32 @@ class PointsTab(BaseWidget):
     def _save_points(self):
         points_file = QFileDialog.getSaveFileName(
             caption="Save Points", filter='CSV Files (*.csv)')
-        print(points_file)
 
-        out_points = []
+        if points_file[0] is not None and points_file[0] != '':
+            out_points = []
 
-        headers = []
-        for axis in self._axis:
-            headers.append(axis.get_name())
-
-        out_points.append(headers)
-
-        length = self._max_axis_len()
-        for i in range(0, length):
-            point = []
+            headers = []
             for axis in self._axis:
-                assert isinstance(axis, ControlAxis)
+                headers.append(axis.get_name())
 
-                # Add enough extra points to the axis so it matches the rest of the axis if it is missing points
-                if len(axis.points) <= i:
-                    for j in range(len(axis.points) - 1, i):
-                        axis.points.append(str(axis.get_min()))
+            out_points.append(headers)
 
-                point.append(str(axis.points[i]))
-            out_points.append(point)
+            length = self._max_axis_len()
+            for i in range(0, length):
+                point = []
+                for axis in self._axis:
+                    assert isinstance(axis, ControlAxis)
 
-        with open(points_file[0], 'w', newline='') as csvfile:
-            csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
-            csvwriter.writerows(out_points)
+                    # Add enough extra points to the axis so it matches the rest of the axis if it is missing points
+                    if len(axis.points) <= i:
+                        for j in range(len(axis.points) - 1, i):
+                            axis.points.append(str(axis.get_min()))
 
-        self._open_file.value = points_file[0]
+                    point.append(str(axis.points[i]))
+                out_points.append(point)
+
+            with open(points_file[0], 'w', newline='') as csvfile:
+                csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+                csvwriter.writerows(out_points)
+
+            self._open_file.value = points_file[0]

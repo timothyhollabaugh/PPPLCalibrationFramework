@@ -107,13 +107,15 @@ class SavedPointsTab(BaseWidget):
     def _on_save_file(self):
         points_file = QFileDialog.getSaveFileName(caption = "Save Points", filter = 'CSV Files (*.csv)')
 
-        out_points = []
-        for name, value in self._saved_points.items():
-            out_points.append([name, value])
+        if points_file[0] is not None and points_file[0] != '':
 
-        with open(points_file[0], 'w', newline='') as csvfile:
-            csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
-            csvwriter.writerows(out_points)
+            out_points = []
+            for name, value in self._saved_points.items():
+                out_points.append([name, value])
+
+            with open(points_file[0], 'w', newline='') as csvfile:
+                csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+                csvwriter.writerows(out_points)
 
 
 class NewPointWindow(BaseWidget):
