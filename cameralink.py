@@ -91,6 +91,11 @@ class CameraLinkSensor(Sensor):
         self._widget.y_bounds.convert_2_int = True
         self._widget.y_bounds.changed_event = self._update_params
 
+        self._widget.save_background = ControlButton(
+            label="Save background"
+        )
+        self._widget.save_background.value = self._save_background
+
     def __del__(self):
         if self._camera_window is not None:
             self._camera_window.close()
@@ -129,6 +134,10 @@ class CameraLinkSensor(Sensor):
                                                 int, self._widget.y_bounds.value[1]),
                                             QtCore.Q_ARG(
                                                 str, self._save_dir))
+
+    def _save_background(self):
+        if self._camera_thread is not None and self._camera is not None:
+            QtCore.QMetaObject.invokeMethod(self._camera, 'save_background', Qt.Qt.QueuedConnection)
 
     def _show_camera(self):
         """
@@ -284,6 +293,10 @@ class CameraThread(QObject):
     _y_min = 0
     _y_max = 512
     _save_dir = None
+    _last_save_dir = None
+
+    _background = None
+    _update_background = False
 
     _timer = None
 
@@ -292,6 +305,7 @@ class CameraThread(QObject):
         """
         Does one time initing of the dll
         """
+        self._background = np.zeros(dtype=ctypes.c_uint16, shape=(512, 640))
         self._clib = ctypes.cdll.LoadLibrary('pdvlib.dll')
         self._pdv = self._clib.pdv_open(b'pdv', 0)
         self._clib.pdv_multibuf(self._pdv, 4)
@@ -339,14 +353,22 @@ class CameraThread(QObject):
 
         now = time.time()
 
+        if self._update_background:
+            print("Background Capture!")
+            self._background = imggrey
+            self._update_background = False
+
         if self._save_dir is not None and self._save_dir != '':
             # Scanning mode, save but no processing
             imgsave = np.uint8(imggrey)
             cv2.imwrite("{}/{}-{}.png".format(self._save_dir,
                                               self._frame, now), imgsave)
+            if self._last_save_dir != self._save_dir:
+                # New step, save background
+                background_save = np.uint8(self._background)
+                cv2.imwrite("{}/background.png".format(self._save_dir), background_save)
         else:
             # Live mode, process but don't save
-            imgorg = cv2.cvtColor(imggrey, cv2.COLOR_GRAY2RGB)
 
             delta_time_fps = now - self._last_frame
             if delta_time_fps != 0:
@@ -366,10 +388,15 @@ class CameraThread(QObject):
                 if self._y_min > 0:
                     self._y_min -= 1
 
+            imgorg = cv2.cvtColor(imggrey, cv2.COLOR_GRAY2RGB)
+
             cv2.rectangle(imgorg, (self._x_min, self._y_min),
                           (self._x_max, self._y_max), (0, 0, 255))
 
-            img = imggrey[self._y_min:self._y_max, self._x_min:self._x_max]
+            img = cv2.absdiff(imggrey, self._background)
+
+            img = img[self._y_min:self._y_max, self._x_min:self._x_max]
+
 
             img = np.uint8(img)
 
@@ -381,7 +408,7 @@ class CameraThread(QObject):
             _, contours, _ = cv2.findContours(
                 img, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
 
-            #imgorg[self._y_min:self._y_max, self._x_min:self._x_max, 2] = img
+            imgorg[self._y_min:self._y_max, self._x_min:self._x_max, 2] = img
 
             points = []
 
@@ -446,6 +473,13 @@ class CameraThread(QObject):
         self._clib.pdv_start_images(self._pdv, 1)
         if self._timer is not None:
             self._timer.stop()
+
+    @QtCore.pyqtSlot()
+    def save_background(self):
+        """
+        Updates the background image with the next frame
+        """
+        self._update_background = True
 
     @QtCore.pyqtSlot(int, int, int, int, int, int, int, str)
     def update_params(self, threshold, min_size, on_threshold, x_min, x_max, y_min, y_max,
