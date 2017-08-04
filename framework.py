@@ -5,13 +5,9 @@ The framework for stepping and scanning axis and measuring the sensor values
 import os
 import time
 import csv
-from enum import Enum, auto
 from abc import ABC, abstractmethod
+from enum import Enum
 from PyQt5.QtCore import QTimer
-from pyforms import BaseWidget
-from pyforms.Controls import ControlCombo, ControlLabel
-
-import cv2
 
 
 class AxisType(Enum):
@@ -84,7 +80,8 @@ class ControlAxis(ABC):
 
     def get_custom_config(self):
         """
-        Gets a custom pywidgets BaseWidget to display in the axis configuation area of the gui when this axis is selected
+        Gets a custom pywidgets BaseWidget to display in the axis configuation
+        area of the gui when this axis is selected
         """
         return None
 
@@ -194,7 +191,7 @@ class ControlAxis(ABC):
         Resovle a point in the form of a number, percent, or saved point into an actual point value
         """
 
-        #print(value)
+        # print(value)
 
         working_value = str(value)
         done_value = None
@@ -233,7 +230,6 @@ class ControlAxis(ABC):
             except ValueError:
                 #print("Could not convert", value, "to float")
                 return
-            
 
         # Clamp the actual value sent to device
         if done_value < self._min:
@@ -257,7 +253,6 @@ class ControlAxis(ABC):
         self._name = name
 
     def get_units(self):
-
         """
         Return a string of the units used for this axis
         """
@@ -431,7 +426,7 @@ class AxisController:
         if self._scan_frequency == 0:
             self._timer.start()
         else:
-            self._timer.start(1000/self._scan_frequency)
+            self._timer.start(1000 / self._scan_frequency)
 
     def stop(self):
         """
@@ -514,7 +509,7 @@ class AxisController:
                     if not os.path.exists(self._step_file):
                         print("Making dir for step")
                         print(self._step_file)
-                        os.makedirs(self._step_file) 
+                        os.makedirs(self._step_file)
                 else:
                     self._step_file = None
 

@@ -171,7 +171,6 @@ class CameraLinkSensor(Sensor):
 
     def begin_measuring(self, save_dir):
         print("Camera Beginning")
-        self._power = 0
         if self._camera_window is None or not self._camera_window.visible:
             self._show_camera()
         self._save_dir = save_dir
