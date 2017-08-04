@@ -54,7 +54,7 @@ class PointsTab(BaseWidget):
 
         self._measure_time = ControlNumber(
             label="Measure Time (s)",
-            default=1,
+            default=5,
             minimum=0,
             maximum=float('inf'),
             decimals=5
@@ -70,14 +70,14 @@ class PointsTab(BaseWidget):
 
         self._scan_frequency = ControlNumber(
             label="Scan Frequency (Hz)",
-            default=1,
+            default=10,
             minimum=0,
             maximum=float('inf'),
             decimals=5
         )
 
         self._out_file = ControlDir(
-            label="Output File: "
+            label="Output Folder: "
         )
 
         self._scan_button = ControlButton(
@@ -92,7 +92,6 @@ class PointsTab(BaseWidget):
             ('_measure_time', '_scan_frequency'),
             '_out_file',
             '_scan_button',
-            'info:(Output file will not be written until scan completes)',
         ]
 
     def update_events(self, events):

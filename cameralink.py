@@ -11,7 +11,7 @@ from PyQt5.QtCore import QTimer, QObject, QThread
 
 from pyforms import BaseWidget
 from pyforms.Controls import ControlBase, ControlButton, ControlSlider, ControlBoundingSlider,\
-    ControlCheckBox
+    ControlCheckBox, ControlLabel
 from pyforms.gui.Controls.ControlPlayer.VideoGLWidget import VideoGLWidget
 
 import cv2
@@ -63,6 +63,10 @@ class CameraLinkSensor(Sensor):
         )
         self._widget.on_threshold.changed_event = self._update_params
 
+        self._widget.x_bounds_label = ControlLabel(
+            label="X Bounds"
+        )
+
         self._widget.x_bounds = ControlBoundingSlider(
             label="X Bounds",
             default=[0, 640],
@@ -73,6 +77,10 @@ class CameraLinkSensor(Sensor):
         self._widget.x_bounds.convert_2_int = True
         self._widget.x_bounds.changed_event = self._update_params
 
+        self._widget.y_bounds_label = ControlLabel(
+            label="Y Bounds"
+        )
+
         self._widget.y_bounds = ControlBoundingSlider(
             label="Y Bounds",
             default=[0, 512],
@@ -82,11 +90,6 @@ class CameraLinkSensor(Sensor):
         )
         self._widget.y_bounds.convert_2_int = True
         self._widget.y_bounds.changed_event = self._update_params
-
-        self._widget.recording = ControlCheckBox(
-            label="Record"
-        )
-        self._widget.recording.changed_event = self._update_params
 
     def __del__(self):
         if self._camera_window is not None:
@@ -330,7 +333,7 @@ class CameraThread(QObject):
             print("Cameralink Timeout")
         elif self._recovering_timeout:
             self._clib.pdv_timeout_restart(self._pdv, True)
-            self._recovering_timeout = False_clib.pdv_image(self._pdv)
+            self._recovering_timeout = False
 
         imggrey = imggrey[:, ::2]
 
