@@ -8,7 +8,6 @@ from pyforms import BaseWidget
 from pyforms.Controls import ControlList, ControlLabel, ControlCombo, ControlEmptyWidget, ControlButton, ControlText, ControlNumber, ControlFile
 from framework import ControlAxis
 
-
 class AxisTab(BaseWidget):
     """
     The Axis Tab in the main GUI
@@ -17,6 +16,8 @@ class AxisTab(BaseWidget):
     _axis = []
     _xaxis = None
     _yaxis = None
+
+    _events = True
 
     _update_function = None
 
@@ -116,27 +117,35 @@ class AxisTab(BaseWidget):
                 if not self._min.visible:
                     self._min.visible = True
                 self._min.label = "Minimum ({})".format(axis.get_units())
+                self._events = False
                 self._min.value = axis.get_min()
+                self._events = True
 
                 # Update the maximum box
                 if not self._max.visible:
                     self._max.visible = True
                 self._max.label = "Maximum ({})".format(axis.get_units())
+                self._events = False
                 self._max.value = axis.get_max()
+                self._events = True
 
                 # Update the norm_minimum box
                 if not self._norm_min.visible:
                     self._norm_min.visible = True
                 self._norm_min.label = "  0% ({})".format(
                     axis.get_units())
+                self._events = False
                 self._norm_min.value = axis.get_norm_min()
+                self._events = True
 
                 # Update the norm_maximum box
                 if not self._norm_max.visible:
                     self._norm_max.visible = True
                 self._norm_max.label = "100% ({})".format(
                     axis.get_units())
+                self._events = False
                 self._norm_max.value = axis.get_norm_max()
+                self._events = True
 
                 # Populate the special axis combo
                 special_axis = ControlCombo(label="Special Axis")
@@ -172,8 +181,10 @@ class AxisTab(BaseWidget):
                 print("Making Special Combo")
                 special_axis.current_index_changed_event = axis_changed
 
+                self._events = False
                 self._special_axis.value = None
                 self._special_axis.value = special_axis
+                self._events = True
 
                 # Update the custom config GUI
                 self._axis_custom.value = axis.get_custom_config()
@@ -199,7 +210,7 @@ class AxisTab(BaseWidget):
             self._save_button.visible = False
 
     def _send_events(self):
-        if self._update_function is not None:
+        if self._events and self._update_function is not None:
             self._update_function(
                 {'axis': self._axis, 'xaxis': self._xaxis, 'yaxis': self._yaxis})
 

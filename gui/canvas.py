@@ -6,7 +6,6 @@ from pyforms.Controls import ControlBase
 import numpy as np
 from framework import ControlAxis
 
-
 class Canvas(ControlBase):
     """
     The canvas to show points and location
@@ -94,15 +93,20 @@ class Canvas(ControlBase):
 
             painter.setPen(point_pen)
 
+            uniquepoints = []
+
+
             for i in range(0, max(len(self._xaxis.points), len(self._yaxis.points))):
-                assert isinstance(self._xaxis, ControlAxis)
-                assert isinstance(self._yaxis, ControlAxis)
-
-                x = self._xaxis.resolve_point(self._xaxis.points[i])
-                y = self._yaxis.resolve_point(self._yaxis.points[i])
-
-                if x is None or y is None:
+                point = (self._xaxis.points[i], self._yaxis.points[i])
+                if point not in uniquepoints:
+                    uniquepoints.append(point)
+                
+            for point in uniquepoints:
+                if point[0] is None or point[1] is None:
                     continue
+
+                x = self._xaxis.resolve_point(point[0])
+                y = self._yaxis.resolve_point(point[1])
 
                 point = transform.map(QPointF(x[0], y[0]))
 

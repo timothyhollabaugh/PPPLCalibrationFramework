@@ -5,7 +5,6 @@ from pyforms import BaseWidget
 from pyforms.Controls import ControlList, ControlNumber, ControlButton, ControlEmptyWidget, ControlFile, ControlText, ControlDir
 from framework import ControlAxis, AxisController, AxisControllerState
 
-
 class PointsTab(BaseWidget):
     """
     A Tab for a list of points
@@ -28,7 +27,7 @@ class PointsTab(BaseWidget):
         self._open_file = ControlFile(
             label="Points File: "
         )
-        self._open_file.changed_event = self._on_open_file2
+        self._open_file.changed_event = self._on_open_file
 
         self._save_file = ControlButton(
             label="Save"
@@ -38,7 +37,8 @@ class PointsTab(BaseWidget):
         self._points_list = ControlList(
             label="Points",
             add_function=self._add_point,
-            remove_function=self._remove_point
+            remove_function=self._remove_point,
+            auto_resize=False
         )
         self._points_list.data_changed_event = self._change_point
         self._points_list.horizontal_headers = [
@@ -140,6 +140,7 @@ class PointsTab(BaseWidget):
 
                 point.append(str(axis.points[i]))
             self._points_list += point
+        self._points_list.resize_rows_contents()
 
     def _max_axis_len(self):
         """
@@ -188,40 +189,6 @@ class PointsTab(BaseWidget):
 
     def _on_open_file(self):
         """
-        Open a csv file and read it into the points lists
-        """
-        print("Opening File:", self._open_file.value)
-
-        if self._open_file.value is not None and self._open_file.value != '':
-
-            with open(self._open_file.value, newline='') as csvfile:
-
-                try:
-                    csvreader = csv.reader(
-                        csvfile, quoting=csv.QUOTE_NONNUMERIC)
-
-                    for axis in self._axis:
-                        if isinstance(axis, ControlAxis):
-                            axis.points.clear()
-                    self._points_list.clear()
-
-                    for row in csvreader:
-                        print(row)
-                        self._points_list += [0.0] * len(self._axis)
-                        for index, data in enumerate(row):
-                            if index < len(self._axis):
-                                axis = self._axis[index]
-                                if isinstance(axis, ControlAxis):
-                                    axis.points.append(data)
-                                    self._points_list.set_value(
-                                        index, len(axis.points) - 1, data)
-
-                except (UnicodeDecodeError, ValueError):
-                    print("Could not parse file")
-                    return
-
-    def _on_open_file2(self):
-        """
         Open a csv file and rearange columns accoring to header
         """
         print("Opening File:", self._open_file.value)
@@ -232,39 +199,41 @@ class PointsTab(BaseWidget):
 
                 try:
                     csvreader = csv.reader(csvfile)
-
-                    for axis in self._axis:
-                        if isinstance(axis, ControlAxis):
-                            axis.points.clear()
-                    self._points_list.clear()
-
-                    points = []
-
-                    for row in csvreader:
-                        for index, data in enumerate(row):
-                            if len(points) <= index:
-                                points.append([])
-                            points[index].append(data)
-
-                    print(points)
-
-                    for points_list in points:
-                        print(points_list[0])
-                        if isinstance(points_list[0], str):
-                            for axis in self._axis:
-                                if points_list[0] == axis.get_name():
-                                    axis.points.clear()
-                                    for point in points_list[1:]:
-                                        try:
-                                            axis.points.append(float(point))
-                                        except ValueError:
-                                            axis.points.append(point)
-                                    print(axis.get_name(), axis.points)
-
-                    self._update_lists()
-
+                    self._parse_file(csvreader)
                 except:
                     print("Failed to read file")
+
+    def _parse_file(self, csvreader):
+        for axis in self._axis:
+            if isinstance(axis, ControlAxis):
+                axis.points.clear()
+        self._points_list.clear()
+
+        points = []
+
+        for row in csvreader:
+            for index, data in enumerate(row):
+                if len(points) <= index:
+                    points.append([])
+                points[index].append(data)
+
+        #print(points)
+
+        for points_list in points:
+            print(points_list[0])
+            if isinstance(points_list[0], str):
+                for axis in self._axis:
+                    if points_list[0] == axis.get_name():
+                        axis.points.clear()
+                        for point in points_list[1:]:
+                            try:
+                                axis.points.append(float(point))
+                            except ValueError:
+                                axis.points.append(point)
+                        #print(axis.get_name(), axis.points)
+
+        self._update_lists()
+
 
     def _save_points(self):
         points_file = QFileDialog.getSaveFileName(
