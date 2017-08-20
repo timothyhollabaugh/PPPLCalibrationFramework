@@ -17,7 +17,7 @@ Quickly scan through multiple points along many different axis (X, Y, power, fre
  **Supported Axis:**
  - [Thorlabs LTS150](https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=3961&pn=LTS150#8110) Linear Stage
  - [Thorlabs BSC201](https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=1704&pn=BSC201) Stepper motor controller
- - Laser Power and Frequency using
+ - [BlueLyte LC Laser](http://www.global-lasertech.co.uk/wp-content/uploads/2014/04/BlueLyte_LC_Userguide_EN.pdf) Power and Frequency using
    - [GW Instek AFG-3021](http://www.gwinstek.com/en-global/products/Signal_Sources/Arbitrary_Function_Generators/AFG-303x) Arbitrary Function Generator
    - [GW Instek GPD-4303S](http://www.gwinstek.com/en-global/products/DC_Power_Supply/Programmable_Multiple_Channel_DC_Power_Supplies/GPD-Series) Power Supply
 
