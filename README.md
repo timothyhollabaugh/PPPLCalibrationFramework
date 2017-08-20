@@ -7,6 +7,8 @@ If you have ever needed to painstackenly scan through multiple dimensions are re
 
 Quickly scan through multiple points along many different axis (X, Y, power, frequency, etc) and measure the value(s) of a sensor at each one.
 
+**Note:** This requires a custom fork of the Pyforms library: [https://github.com/chickenchuck040/pyforms](https://github.com/chickenchuck040/pyforms)
+
 **Features:**
  - Quickly create and configure axis to scan through
  - Jog axis manually
