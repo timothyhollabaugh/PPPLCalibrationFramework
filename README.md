@@ -49,6 +49,10 @@ Many python dependancies are required for this program to run
  In order to install pysettings, you will also need to install `logging-bootstrap` by running 
  `pip install git+https://UmSenhorQualquer@bitbucket.org/fchampalimaud/logging-bootstrap.git --upgrade`
  See https://github.com/UmSenhorQualquer/pyforms/issues/12#issuecomment-263016759 for more information.
+ 
+## qtawsome
+ For some of the icons in the GUI, [qtawsome](https://github.com/spyder-ide/qtawesome) was used. This can be installed with
+ `pip install qtawesome`
 
 ## Cameralink Framegrabber and FLIR Tau 2 camera
  In order to talk to the [PCI DV C-Link](https://edt.com/product/pci-dv-c-link/) framegrabber, you must download and install the PDV software and drivers from https://edt.com/file-category/pdv/.
