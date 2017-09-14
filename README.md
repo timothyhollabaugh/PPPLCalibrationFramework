@@ -46,6 +46,9 @@ Many python dependancies are required for this program to run
  To create the GUI, a custom fork of the [pyforms](https://github.com/UmSenhorQualquer/pyforms) library was used. The fork can be found at https://github.com/chickenchuck040/pyforms. It includes fixes that have not yet been merged into pyforms yet.
  To install, run `python setup.py install`.
  Dependancies for Pyforms can be found at http://pyforms.readthedocs.io/en/v2.0/#installation. Of the optional dependancies listed, PyOpengl, Numpy, and Python OpenCV are needed.
+ In order to install pysettings, you will also need to install `logging-bootstrap` by running 
+ `pip install git+https://UmSenhorQualquer@bitbucket.org/fchampalimaud/logging-bootstrap.git --upgrade`
+ See https://github.com/UmSenhorQualquer/pyforms/issues/12#issuecomment-263016759 for more information.
 
 ## Cameralink Framegrabber and FLIR Tau 2 camera
  In order to talk to the [PCI DV C-Link](https://edt.com/product/pci-dv-c-link/) framegrabber, you must download and install the PDV software and drivers from https://edt.com/file-category/pdv/.
